@@ -5,6 +5,7 @@
 #include "display.h"
 #include "can.h"
 #include "imgui.h"
+#include "implot.h"
 #include "imgui_impl_glfw.h"
 #include "imgui_impl_opengl3.h"
 
@@ -13,7 +14,11 @@
 #include <deque>
 #include <vector>
 
+#include <math.h>
+#include <time.h>
 #include <iostream>
+
+#include <sys/stat.h>
 
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
@@ -39,6 +44,8 @@ void updateTimeseries(uint8_t data[],
 
 void fixedPushBack(std::deque<int> *q, int max_len, int val);
 
+inline bool fileExists (const std::string& name);
+
 //---------------------------------------------------------------------
 // MAIN
 //---------------------------------------------------------------------
@@ -52,19 +59,27 @@ int main(){
 
     unsigned int POSIC_MSG_ID = 0x44;
 
-    const int POSIC_PAST_DPTS = 4; // number of messages to graph
-    const int NUM_POSICS = 3;
+    const int POSIC_PAST_DPTS = 7; // number of messages to graph
+    const int NUM_POSICS = 17;
     const int BYTES_PER_POSIC = 2;
     int posic_timeseries_len = POSIC_PAST_DPTS * NUM_POSICS * BYTES_PER_POSIC;
+    int single_posic_timeseries_len = POSIC_PAST_DPTS*BYTES_PER_POSIC;
 
-    // std::deque<int> posic_deque(posic_timeseries_len, 0);
     std::deque<int> posic_deque;
-    float single_posic_timeseries[POSIC_PAST_DPTS*BYTES_PER_POSIC] = {0};
+    float single_posic_timeseries[single_posic_timeseries_len] = {0};
     int posic_timeseries[posic_timeseries_len] = {0};
 
     int can_disconnected = 1; // not connected
     int socket_deinit = 1; // not initialized
     int nbytes = -1; // no new data read from can interface
+
+    int hand_img_width, hand_img_height = 0;
+    GLuint hand_img_texture = 0;
+    const char* hand_img_path = "./lib/img/hand_img.jpg";
+
+    static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
+                ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
+    
 
     // GLFW Initilization
     glfwSetErrorCallback(glfw_error_callback);
@@ -85,6 +100,7 @@ int main(){
 
     // Create window with graphics context
     ImGui::CreateContext();
+    ImPlot::CreateContext();
     ImGuiIO& io = ImGui::GetIO(); (void)io;
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard; // Enable Keyboard Controls
     ImGui::StyleColorsDark();
@@ -108,6 +124,11 @@ int main(){
         ImGui::Begin("Hand Picture Window");
         ImGui::SeparatorText("RHCP Details");
         ImGui::Text("Description of GUI here");
+        
+        // rendering hand image
+        bool ret = rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
+        IM_ASSERT(ret);
+        ImGui::Image((void*)(intptr_t)hand_img_texture, ImVec2(hand_img_width, hand_img_height));
 
         // can connection checking
         can_disconnected = rhcp::canIsConnected();
@@ -142,23 +163,34 @@ int main(){
 
             ImGui::Begin("Sensor Graphs Window");
             ImGui::SeparatorText("Sensor Graphs");
-            
-            for (int i=0; i<NUM_POSICS; i++){ // get data for each posic
-                getSensorTimeseries(posic_timeseries, POSIC_PAST_DPTS, NUM_POSICS, BYTES_PER_POSIC, i, single_posic_timeseries);
 
-                printf("Posic #%d timeseries: ", i);
-                for(int j=0; j<(BYTES_PER_POSIC*POSIC_PAST_DPTS); j++){
-                    printf("%.1f ", single_posic_timeseries[j]);
+            // plot posic table
+            if (ImGui::BeginTable("##table", 2, flags, ImVec2(-1,0))){
+                ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+                ImGui::TableSetupColumn("Signal");
+                ImGui::TableHeadersRow();
+                ImPlot::PushColormap(ImPlotColormap_Cool);
+                
+                for (int i=0; i<NUM_POSICS; i++){ // get data for each posic
+                    getSensorTimeseries(posic_timeseries, POSIC_PAST_DPTS, NUM_POSICS, BYTES_PER_POSIC, i, single_posic_timeseries);
+                    
+                    rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len);
+
+                    // if (ImGui::TreeNode((void*)(intptr_t)i, "POSIC %d", i)){
+                    //     ImGui::PlotLines("CAN Data", single_posic_timeseries, IM_ARRAYSIZE(single_posic_timeseries), 0, NULL, 0.0f, 210.0f, ImVec2(0, 80.0f));
+                    //     ImGui::TreePop();
+                    // }     
                 }
-                printf("\n");
+                
+                ImPlot::PopColormap();
+                ImGui::EndTable();
 
-                if (ImGui::TreeNode((void*)(intptr_t)i, "POSIC %d", i)){
-                    ImGui::PlotLines("CAN Data", single_posic_timeseries, IM_ARRAYSIZE(single_posic_timeseries), 0, NULL, 0.0f, 210.0f, ImVec2(0, 80.0f));
-                    ImGui::TreePop();
-                }     
             }
 
+            // plot posic drag-n-drop
+            // rhcp::Demo_DragAndDrop();
 
+            // plot xela table
             // for (int i=0; i<NUM_XELAS, i++){
             //     getSensorTimeseries(xela stuff);
 
@@ -167,6 +199,8 @@ int main(){
             //         ImGui::TreePop();
             //     }
             // }
+
+            // plot xela drag-n-drop
 
             ImGui::End();
         }
@@ -186,6 +220,7 @@ int main(){
     // Cleanup
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
+    ImPlot::DestroyContext();
     ImGui::DestroyContext();
 
     glfwDestroyWindow(window);
@@ -269,4 +304,9 @@ void fixedPushBack(std::deque<int> *q, int max_len, int val){
         q->pop_front();
     }
     q->push_back(val);
+}
+
+inline bool fileExists (const std::string& name) {
+  struct stat buffer;   
+  return (stat (name.c_str(), &buffer) == 0); 
 }
