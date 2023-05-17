@@ -57,8 +57,7 @@ int main(){
     struct canfd_frame frame = {.can_id = 0, .len = 0, .flags = 0, .__res0 = 0, .__res1 = 0, .data = {0}}; // without definition, won't work
     struct canfd_frame *read_frame = &frame;
 
-    unsigned int POSIC_MSG_ID = 0x44;
-
+    unsigned int POSIC_MSG_ID = 0x44; //
     const int POSIC_PAST_DPTS = 7; // number of messages to graph
     const int NUM_POSICS = 17;
     const int BYTES_PER_POSIC = 2;
@@ -79,6 +78,7 @@ int main(){
 
     static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
                 ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
+    int test_mode_en[NUM_POSICS] = {0};
     
 
     // GLFW Initilization
@@ -127,7 +127,8 @@ int main(){
         
         // rendering hand image
         bool ret = rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
-        IM_ASSERT(ret);
+        // IM_ASSERT(ret); // interferes with debugging
+        
         ImGui::Image((void*)(intptr_t)hand_img_texture, ImVec2(hand_img_width, hand_img_height));
 
         // can connection checking
@@ -135,7 +136,7 @@ int main(){
 
         if(can_disconnected){
             socket_deinit = 1;
-            printf("CAN Status (0 conn, 1 disconn, -1 err /proc/net/dev)): %d\n", can_disconnected);
+            // printf("CAN Status (0 conn, 1 disconn, -1 err /proc/net/dev)): %d\n", can_disconnected);
             ImGui::Text("No CAN device found.\n");
             ImGui::End();
         }
@@ -165,21 +166,17 @@ int main(){
             ImGui::SeparatorText("Sensor Graphs");
 
             // plot posic table
-            if (ImGui::BeginTable("##table", 2, flags, ImVec2(-1,0))){
+            if (ImGui::BeginTable("##table", 3, flags, ImVec2(-1,0))){
                 ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed, 75.0f);
-                ImGui::TableSetupColumn("Signal");
+                ImGui::TableSetupColumn("50kHz Test", ImGuiTableColumnFlags_WidthFixed, 75.0f);
                 ImGui::TableHeadersRow();
                 ImPlot::PushColormap(ImPlotColormap_Cool);
                 
                 for (int i=0; i<NUM_POSICS; i++){ // get data for each posic
                     getSensorTimeseries(posic_timeseries, POSIC_PAST_DPTS, NUM_POSICS, BYTES_PER_POSIC, i, single_posic_timeseries);
                     
-                    rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len);
+                    rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en);
 
-                    // if (ImGui::TreeNode((void*)(intptr_t)i, "POSIC %d", i)){
-                    //     ImGui::PlotLines("CAN Data", single_posic_timeseries, IM_ARRAYSIZE(single_posic_timeseries), 0, NULL, 0.0f, 210.0f, ImVec2(0, 80.0f));
-                    //     ImGui::TreePop();
-                    // }     
                 }
                 
                 ImPlot::PopColormap();
