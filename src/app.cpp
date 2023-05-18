@@ -63,7 +63,7 @@ int main(){
     const int BYTES_PER_POSIC = 2;
     int posic_timeseries_len = POSIC_PAST_DPTS * NUM_POSICS * BYTES_PER_POSIC;
     int single_posic_timeseries_len = POSIC_PAST_DPTS*BYTES_PER_POSIC;
-    float POSIC_MAX_VAL = 250;
+    float POSIC_MAX_VAL = 300;
 
     std::deque<int> posic_deque;
     float single_posic_timeseries[single_posic_timeseries_len] = {0};
@@ -116,6 +116,11 @@ int main(){
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
+    // bool ret = rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
+    // IM_ASSERT(ret); // interferes with debugging, include in production code
+
+
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -132,11 +137,7 @@ int main(){
         ImGui::SeparatorText("RHCP Details");
         ImGui::Text("Description of GUI here");
         
-        // rendering hand image
-        rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
-        // bool ret = rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
-        // IM_ASSERT(ret); // interferes with debugging
-        
+        // rendering hand image        
         ImGui::Image((void*)(intptr_t)hand_img_texture, ImVec2(hand_img_width, hand_img_height));
 
         // can connection checking
