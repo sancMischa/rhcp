@@ -63,6 +63,7 @@ int main(){
     const int BYTES_PER_POSIC = 2;
     int posic_timeseries_len = POSIC_PAST_DPTS * NUM_POSICS * BYTES_PER_POSIC;
     int single_posic_timeseries_len = POSIC_PAST_DPTS*BYTES_PER_POSIC;
+    float POSIC_MAX_VAL = 250;
 
     std::deque<int> posic_deque;
     float single_posic_timeseries[single_posic_timeseries_len] = {0};
@@ -79,7 +80,13 @@ int main(){
     static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
                 ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
     int test_mode_en[NUM_POSICS] = {0};
+
+    rhcp::MyDndItem dnd_posics[NUM_POSICS];
     
+    // set drag and drop labels
+    for (int i=0; i<NUM_POSICS; i++){
+        snprintf(dnd_posics[i].Label, sizeof(dnd_posics[i].Label), "POSIC %d", i+1); // set label
+    }
 
     // GLFW Initilization
     glfwSetErrorCallback(glfw_error_callback);
@@ -126,7 +133,8 @@ int main(){
         ImGui::Text("Description of GUI here");
         
         // rendering hand image
-        bool ret = rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
+        rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
+        // bool ret = rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
         // IM_ASSERT(ret); // interferes with debugging
         
         ImGui::Image((void*)(intptr_t)hand_img_texture, ImVec2(hand_img_width, hand_img_height));
@@ -174,18 +182,19 @@ int main(){
                 
                 for (int i=0; i<NUM_POSICS; i++){ // get data for each posic
                     getSensorTimeseries(posic_timeseries, POSIC_PAST_DPTS, NUM_POSICS, BYTES_PER_POSIC, i, single_posic_timeseries);
-                    
-                    rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en);
+                
+                    rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en, POSIC_MAX_VAL);
+                    dnd_posics[i].data.assign(single_posic_timeseries, single_posic_timeseries+single_posic_timeseries_len);
+                    // assign() is iteration based, could make this faster
 
                 }
                 
                 ImPlot::PopColormap();
                 ImGui::EndTable();
-
             }
 
             // plot posic drag-n-drop
-            // rhcp::Demo_DragAndDrop();
+            rhcp::displayDragAndDrop(dnd_posics, NUM_POSICS, single_posic_timeseries_len, POSIC_MAX_VAL);
 
             // plot xela table
             // for (int i=0; i<NUM_XELAS, i++){
@@ -240,6 +249,8 @@ static void glfw_error_callback(int error, const char* description){
 }
 
 // retrieves timeseries data from one sensor
+// TODO: each posic is 2 bytes of data --> need to put these two bytes into one number
+// that will be added to the float out[] array 
 void getSensorTimeseries(int timeseries_flattened[],
                             int dim1_elements,
                             int dim2_elements, 

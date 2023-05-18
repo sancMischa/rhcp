@@ -1,95 +1,91 @@
 #include "display.h"
-#include "imgui.h"
-#include "implot.h"
 #include <stdio.h>
 #include <math.h>
 
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-void rhcp::Demo_DragAndDrop() {
-    ImGui::BulletText("Drag/drop items from the left column.");
-    ImGui::BulletText("Drag/drop items between plots.");
-    ImGui::Indent();
-    ImGui::BulletText("Plot 1 Targets: Plot, Y-Axes, Legend");
-    ImGui::BulletText("Plot 1 Sources: Legend Item Labels");
-    ImGui::BulletText("Plot 2 Targets: Plot, X-Axis, Y-Axis");
-    ImGui::BulletText("Plot 2 Sources: Plot, X-Axis, Y-Axis (hold Ctrl)");
-    ImGui::Unindent();
+namespace rhcp{
 
-    // convenience struct to manage DND items; do this however you like
-    struct MyDndItem {
-        int              Idx;
-        int              Plt;
-        ImAxis           Yax;
-        char             Label[16];
-        ImVector<ImVec2> Data;
-        ImVec4           Color;
-        MyDndItem()        {
-            static int i = 0;
-            Idx = i++;
-            Plt = 0;
-            Yax = ImAxis_Y1;
-            snprintf(Label, sizeof(Label), "%02d Hz", Idx+1);
-            Color = RandomColor();
-            Data.reserve(1001);
-            for (int k = 0; k < 1001; ++k) {
-                float t = k * 1.0f / 999;
-                Data.push_back(ImVec2(t, 0.5f + 0.5f * sinf(2*3.14f*t*(Idx+1))));
-            }
-        }
-        void Reset() { Plt = 0; Yax = ImAxis_Y1; }
-    };
+    MyDndItem::MyDndItem(){
+        Idx = 0;
+        Plt = 0;
+        Yax = ImAxis_Y1;
+        Color = rhcp::RandomColor();
+    }
 
-    const int         k_dnd = 20;
-    static MyDndItem  dnd[k_dnd];
+    void MyDndItem::Reset(){ 
+        Plt = 0; Yax = ImAxis_Y1; 
+    }
+
+}
+
+void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int dataseries_len, float ymax) {
+
+    bool reset_axes = false;
+
+    ImGui::Begin("DragnDrop Window");
 
     // child window to serve as initial source for our DND items
     ImGui::BeginChild("DND_LEFT",ImVec2(100,400));
     if (ImGui::Button("Reset Data")) {
-        for (int k = 0; k < k_dnd; ++k)
-            dnd[k].Reset();
+        for (int k = 0; k < num_dnd_items; ++k)
+            dnd_items[k].Reset();
     }
-    for (int k = 0; k < k_dnd; ++k) {
-        if (dnd[k].Plt > 0)
+    for (int k = 0; k < num_dnd_items; ++k) {
+        if (dnd_items[k].Plt > 0)
             continue;
-        ImPlot::ItemIcon(dnd[k].Color); ImGui::SameLine();
-        ImGui::Selectable(dnd[k].Label, false, 0, ImVec2(100, 0));
+        ImPlot::ItemIcon(dnd_items[k].Color); ImGui::SameLine();
+        ImGui::Selectable(dnd_items[k].Label, false, 0, ImVec2(100, 0));
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
             ImGui::SetDragDropPayload("MY_DND", &k, sizeof(int));
-            ImPlot::ItemIcon(dnd[k].Color); ImGui::SameLine();
-            ImGui::TextUnformatted(dnd[k].Label);
+            ImPlot::ItemIcon(dnd_items[k].Color); ImGui::SameLine();
+            ImGui::TextUnformatted(dnd_items[k].Label);
             ImGui::EndDragDropSource();
         }
     }
-    ImGui::EndChild();
+    ImGui::EndChild(); // dnd source window
+
+    // dnd accepting window (graphs)
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MY_DND")) {
-            int i = *(int*)payload->Data; dnd[i].Reset();
+            int i = *(int*)payload->Data; dnd_items[i].Reset();
         }
         ImGui::EndDragDropTarget();
     }
-
     ImGui::SameLine();
     ImGui::BeginChild("DND_RIGHT",ImVec2(-1,400));
-    // timeseries plot
     ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoHighlight;
+
+    if (ImGui::Button("Reset Axes")){
+        reset_axes = true;
+    }
+
+    if (reset_axes){
+        ImPlot::SetNextAxesLimits(0, dataseries_len-1, 0, ymax, ImGuiCond_Always);
+        reset_axes = false;
+    }
+
     if (ImPlot::BeginPlot("##DND1", ImVec2(-1,195))) {
-        ImPlot::SetupAxis(ImAxis_X1, nullptr, flags|ImPlotAxisFlags_Lock);
+
+        ImPlot::SetupAxesLimits(0, dataseries_len-1, 0, ymax); // ImGuiCond_Always prevents zooming (although the zoom action is still available)
+
+        ImPlot::SetupAxis(ImAxis_X1, nullptr, flags);
         ImPlot::SetupAxis(ImAxis_Y1, "[drop here]", flags);
         ImPlot::SetupAxis(ImAxis_Y2, "[drop here]", flags|ImPlotAxisFlags_Opposite);
         ImPlot::SetupAxis(ImAxis_Y3, "[drop here]", flags|ImPlotAxisFlags_Opposite);
 
-        for (int k = 0; k < k_dnd; ++k) {
-            if (dnd[k].Plt == 1 && dnd[k].Data.size() > 0) {
-                ImPlot::SetAxis(dnd[k].Yax);
-                ImPlot::SetNextLineStyle(dnd[k].Color);
-                ImPlot::PlotLine(dnd[k].Label, &dnd[k].Data[0].x, &dnd[k].Data[0].y, dnd[k].Data.size(), 0, 0, 2 * sizeof(float));
+        for (int k = 0; k < num_dnd_items; ++k) {
+            if (dnd_items[k].Plt == 1 && dnd_items[k].data.size() > 0) {
+                ImPlot::SetAxis(dnd_items[k].Yax);
+                ImPlot::SetNextLineStyle(dnd_items[k].Color);
+                // unsure about parameters in this next function
+                ImPlot::PlotLine(dnd_items[k].Label, &dnd_items[k].data[0], dataseries_len, 1, 0, 0, 0);
                 // allow legend item labels to be DND sources
-                if (ImPlot::BeginDragDropSourceItem(dnd[k].Label)) {
+                if (ImPlot::BeginDragDropSourceItem(dnd_items[k].Label)) {
                     ImGui::SetDragDropPayload("MY_DND", &k, sizeof(int));
-                    ImPlot::ItemIcon(dnd[k].Color); ImGui::SameLine();
-                    ImGui::TextUnformatted(dnd[k].Label);
+                    ImPlot::ItemIcon(dnd_items[k].Color); ImGui::SameLine();
+                    ImGui::TextUnformatted(dnd_items[k].Label);
                     ImPlot::EndDragDropSource();
                 }
             }
@@ -97,7 +93,7 @@ void rhcp::Demo_DragAndDrop() {
         // allow the main plot area to be a DND target
         if (ImPlot::BeginDragDropTargetPlot()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MY_DND")) {
-                int i = *(int*)payload->Data; dnd[i].Plt = 1; dnd[i].Yax = ImAxis_Y1;
+                int i = *(int*)payload->Data; dnd_items[i].Plt = 1; dnd_items[i].Yax = ImAxis_Y1;
             }
             ImPlot::EndDragDropTarget();
         }
@@ -105,7 +101,7 @@ void rhcp::Demo_DragAndDrop() {
         for (int y = ImAxis_Y1; y <= ImAxis_Y3; ++y) {
             if (ImPlot::BeginDragDropTargetAxis(y)) {
                 if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MY_DND")) {
-                    int i = *(int*)payload->Data; dnd[i].Plt = 1; dnd[i].Yax = y;
+                    int i = *(int*)payload->Data; dnd_items[i].Plt = 1; dnd_items[i].Yax = y;
                 }
                 ImPlot::EndDragDropTarget();
             }
@@ -113,7 +109,7 @@ void rhcp::Demo_DragAndDrop() {
         // allow the legend to be a DND target
         if (ImPlot::BeginDragDropTargetLegend()) {
             if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MY_DND")) {
-                int i = *(int*)payload->Data; dnd[i].Plt = 1; dnd[i].Yax = ImAxis_Y1;
+                int i = *(int*)payload->Data; dnd_items[i].Plt = 1; dnd_items[i].Yax = ImAxis_Y1;
             }
             ImPlot::EndDragDropTarget();
         }
@@ -121,10 +117,12 @@ void rhcp::Demo_DragAndDrop() {
     }
     
     ImGui::EndChild();
+
+    ImGui::End();
 }
 
 // to be called in loop, doesn't include begin table or end table
-void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, int checkbox_status[]){
+void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, int checkbox_status[], float ymax){
 
     bool checkbox_status_updated = checkbox_status[idx];
 
@@ -132,12 +130,12 @@ void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, int
     ImGui::TableSetColumnIndex(0);
     ImGui::Text("POSIC %d", idx);
     ImGui::TableSetColumnIndex(1);
-    ImGui::Checkbox("", &checkbox_status_updated);
+    ImGui::Checkbox("", &checkbox_status_updated); // TODO: checkboxes aren't working
     ImGui::TableSetColumnIndex(2);
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0)); // no graph padding
     if (ImPlot::BeginPlot("",ImVec2(-1, 30),ImPlotFlags_CanvasOnly|ImPlotFlags_NoChild)) {
         ImPlot::SetupAxes(nullptr,nullptr,ImPlotAxisFlags_NoDecorations,ImPlotAxisFlags_NoDecorations);
-        ImPlot::SetupAxesLimits(0, len_timeseries - 1, 0, 260.0f, ImGuiCond_Always);
+        ImPlot::SetupAxesLimits(0, len_timeseries - 1, 0, ymax, ImGuiCond_Always);
         ImPlot::SetNextLineStyle(ImPlot::GetColormapColor(idx));
         ImPlot::PlotLine("", timeseries, len_timeseries, 1, 0, 0, 0);
         ImPlot::EndPlot();

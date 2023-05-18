@@ -1701,6 +1701,8 @@ void Demo_DragAndDrop() {
         }
     }
     ImGui::EndChild();
+
+    // dnd accepting window (graphs)
     if (ImGui::BeginDragDropTarget()) {
         if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("MY_DND")) {
             int i = *(int*)payload->Data; dnd[i].Reset();
