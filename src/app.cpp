@@ -67,6 +67,7 @@ int main(){
 
     std::deque<int> posic_deque;
     float single_posic_timeseries[single_posic_timeseries_len] = {0};
+    uint8_t single_posic_timeseries_int[single_posic_timeseries_len] = {0};
     int posic_timeseries[posic_timeseries_len] = {0};
 
     int can_disconnected = 1; // not connected
@@ -79,7 +80,7 @@ int main(){
 
     static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
                 ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
-    int test_mode_en[NUM_POSICS] = {0};
+    bool test_mode_en[NUM_POSICS] = {0};
 
     rhcp::MyDndItem dnd_posics[NUM_POSICS];
     
@@ -196,6 +197,8 @@ int main(){
 
             // plot posic drag-n-drop
             rhcp::displayDragAndDrop(dnd_posics, NUM_POSICS, single_posic_timeseries_len, POSIC_MAX_VAL);
+
+            // TODO: CAN communication with dorsal based on test_mode_en status
 
             // plot xela table
             // for (int i=0; i<NUM_XELAS, i++){

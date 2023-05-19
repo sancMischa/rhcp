@@ -28,7 +28,7 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
 
     // child window to serve as initial source for our DND items
     ImGui::BeginChild("DND_LEFT",ImVec2(100,400));
-    if (ImGui::Button("Reset Data")) {
+    if (ImGui::Button("Clear Graph")) {
         for (int k = 0; k < num_dnd_items; ++k)
             dnd_items[k].Reset();
     }
@@ -57,7 +57,7 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
     ImGui::BeginChild("DND_RIGHT",ImVec2(-1,400));
     ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoHighlight;
 
-    if (ImGui::Button("Reset Axes")){
+    if (ImGui::Button("Reset Scale")){
         reset_axes = true;
     }
 
@@ -122,15 +122,16 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
 }
 
 // to be called in loop, doesn't include begin table or end table
-void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, int checkbox_status[], float ymax){
+void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, bool checkbox_status[], float ymax){
 
-    bool checkbox_status_updated = checkbox_status[idx];
 
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
     ImGui::Text("POSIC %d", idx);
     ImGui::TableSetColumnIndex(1);
-    ImGui::Checkbox("", &checkbox_status_updated); // TODO: checkboxes aren't working
+    ImGui::PushID(idx); // https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-about-the-id-stack-system
+    ImGui::Checkbox("##0n", &checkbox_status[idx]); // Label = "", ID = hash of ("Window name", i, "#00n") - unique
+    ImGui::PopID();
     ImGui::TableSetColumnIndex(2);
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0)); // no graph padding
     if (ImPlot::BeginPlot("",ImVec2(-1, 30),ImPlotFlags_CanvasOnly|ImPlotFlags_NoChild)) {
@@ -141,9 +142,6 @@ void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, int
         ImPlot::EndPlot();
     }
 
-    if(checkbox_status[idx] != checkbox_status_updated){
-        checkbox_status[idx] = checkbox_status_updated;
-    }
 
 }
 

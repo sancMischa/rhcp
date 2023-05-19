@@ -66,20 +66,13 @@ int rhcp::canReadFrame(int *s, canfd_frame *frame){
     int nbytes;
 
     nbytes = read(*s, frame, sizeof(struct canfd_frame));
-    // printf("nbytes value (-1 = no data avail):%d\n", nbytes);
-
-    // if (nbytes < 0){
-    //     perror("Read");
-    //     return 1;
-    // }
-    // for hot plugging the can interface, the lines above cause a read error
 
     // debugging purposes    
     if(nbytes == -1){
         // printf("No data to read, would block.\n");
     }
     else{
-        printf("0x%03X [%d] ",frame->can_id, frame->len); // can_dlc for std can frames
+        printf("0x%03X [%d] ",frame->can_id, frame->len); // can_dlc instead of len for std can frames
 
         for (int i = 0; i < frame->len; i++)
             printf("%02X ",frame->data[i]);
@@ -90,6 +83,7 @@ int rhcp::canReadFrame(int *s, canfd_frame *frame){
 
 }
 
+// TODO: modify this to take in data and datalength
 int rhcp::canSendFrame(int *s){
     
     struct canfd_frame frame;
