@@ -34,6 +34,14 @@ void getSensorTimeseries(int timeseries_flattened[],
                             int dim2_elements, 
                             int dim3_elements,
                             int dim2_idx,  
+                            uint8_t out[]);
+
+// will eventually be deleted once confirm combining bytes works
+void getSensorTimeseries(int timeseries_flattened[],
+                            int dim1_elements,
+                            int dim2_elements, 
+                            int dim3_elements,
+                            int dim2_idx,  
                             float out[]);
 
 void updateTimeseries(uint8_t data[], 
@@ -45,6 +53,8 @@ void updateTimeseries(uint8_t data[],
 void fixedPushBack(std::deque<int> *q, int max_len, int val);
 
 inline bool fileExists (const std::string& name);
+
+int combineBytesInArray(uint8_t in[], int len, float out[]);
 
 //---------------------------------------------------------------------
 // MAIN
@@ -176,15 +186,16 @@ int main(){
             ImGui::SeparatorText("Sensor Graphs");
 
             // plot posic table
-            if (ImGui::BeginTable("##table", 3, flags, ImVec2(-1,0))){
+            if (ImGui::BeginTable("##table", 4, flags, ImVec2(-1,0))){
                 ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed, 75.0f);
                 ImGui::TableSetupColumn("50kHz Test", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, 75.0f);
                 ImGui::TableHeadersRow();
                 ImPlot::PushColormap(ImPlotColormap_Cool);
                 
                 for (int i=0; i<NUM_POSICS; i++){ // get data for each posic
                     getSensorTimeseries(posic_timeseries, POSIC_PAST_DPTS, NUM_POSICS, BYTES_PER_POSIC, i, single_posic_timeseries);
-                
+                    // combineBytesInArray(single_posic_timeseries_int, single_posic_timeseries_len, single_posic_timeseries);
                     rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en, POSIC_MAX_VAL);
                     dnd_posics[i].data.assign(single_posic_timeseries, single_posic_timeseries+single_posic_timeseries_len);
                     // assign() is iteration based, could make this faster
@@ -260,6 +271,24 @@ void getSensorTimeseries(int timeseries_flattened[],
                             int dim2_elements, 
                             int dim3_elements,
                             int dim2_idx,  
+                            uint8_t out[])
+{
+    int timeseries_idx;
+
+    for (int i=0; i<dim1_elements; i++){
+       timeseries_idx = i * (dim2_elements * dim3_elements) + dim2_idx * dim3_elements;
+
+        for (int j=0; j<dim3_elements; j++){
+            out[i * dim3_elements + j] = timeseries_flattened[timeseries_idx + j];
+        }
+    }
+}
+
+void getSensorTimeseries(int timeseries_flattened[],
+                            int dim1_elements,
+                            int dim2_elements, 
+                            int dim3_elements,
+                            int dim2_idx,  
                             float out[])
 {
     int timeseries_idx;
@@ -308,6 +337,19 @@ void updateTimeseries(uint8_t data[],
     // timeseries_flattened = &temp_vec[0];
     // printf("Address of timeseries_flattened after vector reassignment: %d\n", timeseries_flattened);
 
+}
+
+int combineBytesInArray(uint8_t in[], int len, float out[]){
+    
+    if (len % 2 != 0){
+        return 1; 
+    }
+
+    for (int i=0; i<len; i+=2){
+        out[i/2] = in[i] << 8 | in[i+1];
+    }
+
+    return 0;
 }
 
 // pushes an item to a queue of fixed length
