@@ -27,8 +27,7 @@ SOURCES_APP += $(SOURCES)
 SOURCES_EX = main.cpp
 SOURCES_EX += $(SOURCES)
 
-SOURCES_TEST = test.cpp
-SOURCES_TEST += $(SOURCES)
+SOURCES_TEST = test.cpp can.cpp
 
 OBJS_EX = $(SOURCES_EX:%.cpp=$(OBJ)/%.o)
 OBJS_APP = $(SOURCES_APP:%.cpp=$(OBJ)/%.o)
@@ -75,7 +74,7 @@ $(OBJ)/%.o:$(IMGUI_DIR)/implot/%.cpp
 
 .PHONY: app demo clean test
 
-test: $(BIN)/$(EXE_APP)
+test: $(BIN)/$(EXE_TEST)
 	@echo Build complete for $(ECHO_MESSAGE)
 
 app: $(BIN)/$(EXE_APP)

@@ -13,6 +13,9 @@
 #include <linux/can.h>
 #include <linux/can/raw.h>
 
+#include <linux/netlink.h>
+#include <linux/rtnetlink.h>
+
 const char* rhcp::CAN_INTERFACE_NAME = "can0";
 
 int rhcp::canInitSocket(int *s){
@@ -30,7 +33,11 @@ int rhcp::canInitSocket(int *s){
 
     //retrieve interface index
     strcpy(ifr.ifr_name, rhcp::CAN_INTERFACE_NAME);
-    ioctl(*s, SIOCGIFINDEX, &ifr);
+    if (ioctl(*s, SIOCGIFINDEX, &ifr) == -1){
+        // perror("ioctl");
+        close(*s);
+        return 1;
+    }
 
     //bind socket to CAN interface
     memset(&addr, 0, sizeof(addr));
@@ -108,27 +115,56 @@ int rhcp::canCloseSocket(int *s){
     return 0;
 }
 
-// returns 0 if can connected, 1 if can not connected, -1 if issue opening file
-int rhcp::canIsConnected(){
-    FILE *fp;
-    char *fname = "/proc/net/dev";
-    const char *search = rhcp::CAN_INTERFACE_NAME;
-    char temp[512];
+// // returns 0 if can connected, 1 if can not connected, -1 if issue opening file
+// int rhcp::canIsConnected(){
+//     FILE *fp;
+//     char *fname = "/proc/net/dev";
+//     const char *search = rhcp::CAN_INTERFACE_NAME;
+//     char temp[512];
 
-    // open file
-    if((fp = fopen(fname, "r")) == NULL){
-        return -1;
-    }
+//     // open file
+//     if((fp = fopen(fname, "r")) == NULL){
+//         return -1;
+//     }
 
-    // read each line, search for string
-    while (fgets(temp, sizeof(temp), fp) != NULL){
-        if (strstr(temp, search) != NULL){
-            fclose(fp);
-            return 0;
-        }
-    }
+//     // read each line, search for string
+//     while (fgets(temp, sizeof(temp), fp) != NULL){
+//         if (strstr(temp, search) != NULL){
+//             fclose(fp);
+//             return 0;
+//         }
+//     }
 
-    fclose(fp);
+//     fclose(fp);
     
-    return 1;
+//     return 1;
+// }
+
+
+int rhcp::canIsConnected() {
+    struct ifreq ifr;
+    int sock_fd;
+
+    // Create a socket
+    sock_fd = socket(AF_INET, SOCK_DGRAM, 0);
+    if (sock_fd == -1) {
+        return 0;
+    }
+
+    // Set the device name
+    strncpy(ifr.ifr_name, rhcp::CAN_INTERFACE_NAME, IFNAMSIZ);
+
+    // Get the device flags
+    if (ioctl(sock_fd, SIOCGIFFLAGS, &ifr) == -1) {
+        close(sock_fd);
+        return 0;
+    }
+
+    // Check the device flags for connectivity
+    int is_connected = (ifr.ifr_flags & IFF_RUNNING) != 0;
+
+    // Close the socket
+    close(sock_fd);
+
+    return is_connected;
 }

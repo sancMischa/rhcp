@@ -45,8 +45,6 @@ void updateTimeseries(uint8_t data[],
 
 void fixedPushBack(std::deque<int> *q, int max_len, int val);
 
-inline bool fileExists (const std::string& name);
-
 //---------------------------------------------------------------------
 // MAIN
 //---------------------------------------------------------------------
@@ -70,9 +68,9 @@ int main(){
     float single_posic_timeseries[single_posic_timeseries_len] = {0};
     int posic_timeseries[posic_timeseries_len] = {0};
 
-    int can_disconnected = 1; // not connected
-    int socket_deinit = 1; // not initialized
+    int can_connected = 0; // can not connected
     int nbytes = -1; // no new data read from can interface
+    int can_sock_deinit = 1; // socket deinitialized
 
     int hand_img_width, hand_img_height = 0;
     GLuint hand_img_texture = 0;
@@ -121,7 +119,6 @@ int main(){
     // bool ret = rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
     // IM_ASSERT(ret); // interferes with debugging, include in production code
 
-
     // Main loop
     while (!glfwWindowShouldClose(window))
     {
@@ -141,26 +138,24 @@ int main(){
         // rendering hand image        
         ImGui::Image((void*)(intptr_t)hand_img_texture, ImVec2(hand_img_width, hand_img_height));
 
-        // can connection checking
-        can_disconnected = rhcp::canIsConnected();
-
-        if(can_disconnected){
-            socket_deinit = 1;
-            // printf("CAN Status (0 conn, 1 disconn, -1 err /proc/net/dev)): %d\n", can_disconnected);
-            ImGui::Text("No CAN device found.\n");
+        // CAN initialization
+        can_connected = rhcp::canIsConnected();
+        if(!can_connected){
+            ImGui::Text("No CAN device found, attempting connection.\n");
             ImGui::End();
+            can_sock_deinit = -1;
         }
-        else{ // CAN connected
-            ImGui::End();
-            if(socket_deinit){ // initialize socket
-                if(rhcp::canInitSocket(s)!=0)
-                    return 1;
-                socket_deinit = 0;
-                printf("initialized socket\n");
-            }      
+        else{
+            if(can_sock_deinit){
+                can_sock_deinit = rhcp::canInitSocket(s);
+                if(can_sock_deinit)
+                    return 1; // didn't sucessfully initialize socket
+            }
 
+            ImGui::End();      
+            // need to CONTINUALLY check if CAN disconnected (what we have here is a one-time check)
             nbytes = rhcp::canReadFrame(s, read_frame);
-            
+
             if (nbytes != -1){ // recieved new data
 
                 // handle posic frame
@@ -231,7 +226,7 @@ int main(){
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
-
+            
     }
 
     // Cleanup
@@ -309,15 +304,8 @@ void updateTimeseries(uint8_t data[],
         temp_vec = std::vector<int>(timeseries->begin(), timeseries->end());
     }
 
-    // printf("Address of timeseries_flattened: %d\n", posic_timeseries);
-    // timeseries_flattened = &temp_vec[0]; // improper use of address reassignment
     int* temp_ptr = &temp_vec[0];
     std::copy(temp_ptr, temp_ptr + timeseries_len, timeseries_flattened); // linear time operation
-    // printf("Address of timeseries_flattened after vector reassignment: %d\n", posic_timeseries);
-
-    // printf("Address of timeseries_flattened: %d\n", timeseries_flattened);
-    // timeseries_flattened = &temp_vec[0];
-    // printf("Address of timeseries_flattened after vector reassignment: %d\n", timeseries_flattened);
 
 }
 
@@ -327,9 +315,4 @@ void fixedPushBack(std::deque<int> *q, int max_len, int val){
         q->pop_front();
     }
     q->push_back(val);
-}
-
-inline bool fileExists (const std::string& name) {
-  struct stat buffer;   
-  return (stat (name.c_str(), &buffer) == 0); 
 }
