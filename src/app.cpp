@@ -29,13 +29,6 @@
 
 static void glfw_error_callback(int error, const char* description);
 
-void getSensorTimeseries(int timeseries_flattened[],
-                            int dim1_elements,
-                            int dim2_elements, 
-                            int dim3_elements,
-                            int dim2_idx,  
-                            uint8_t out[]);
-
 // will eventually be deleted once confirm combining bytes works
 void getSensorTimeseries(int timeseries_flattened[],
                             int dim1_elements,
@@ -54,8 +47,6 @@ void fixedPushBack(std::deque<int> *q, int max_len, int val);
 
 inline bool fileExists (const std::string& name);
 
-int combineBytesInArray(uint8_t in[], int len, float out[]);
-
 //---------------------------------------------------------------------
 // MAIN
 //---------------------------------------------------------------------
@@ -67,17 +58,16 @@ int main(){
     struct canfd_frame frame = {.can_id = 0, .len = 0, .flags = 0, .__res0 = 0, .__res1 = 0, .data = {0}}; // without definition, won't work
     struct canfd_frame *read_frame = &frame;
 
-    unsigned int POSIC_MSG_ID = 0x44; //
-    const int POSIC_PAST_DPTS = 7; // number of messages to graph
-    const int NUM_POSICS = 17;
+    unsigned int POSIC_MSG_ID = 0x050; //
+    const int POSIC_PAST_DPTS = 5000; // number of messages to graph
+    const int NUM_POSICS = 3;
     const int BYTES_PER_POSIC = 2;
     int posic_timeseries_len = POSIC_PAST_DPTS * NUM_POSICS * BYTES_PER_POSIC;
-    int single_posic_timeseries_len = POSIC_PAST_DPTS*BYTES_PER_POSIC;
-    float POSIC_MAX_VAL = 300;
+    int single_posic_timeseries_len = POSIC_PAST_DPTS;
+    float POSIC_MAX_VAL = 65535; // each posic is 16 bits
 
     std::deque<int> posic_deque;
     float single_posic_timeseries[single_posic_timeseries_len] = {0};
-    uint8_t single_posic_timeseries_int[single_posic_timeseries_len] = {0};
     int posic_timeseries[posic_timeseries_len] = {0};
 
     int can_disconnected = 1; // not connected
@@ -177,8 +167,8 @@ int main(){
                 if (read_frame->can_id == POSIC_MSG_ID){
                     updateTimeseries(read_frame->data, read_frame->len, posic_timeseries_len, posic_timeseries, &posic_deque);
                 }
-                else{
-                    // handle xela frame as above
+                else{ // should be an else if (future proof))
+                    // handle tactile sensor frame as above
                 }
             }
 
@@ -189,13 +179,19 @@ int main(){
             if (ImGui::BeginTable("##table", 4, flags, ImVec2(-1,0))){
                 ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed, 75.0f);
                 ImGui::TableSetupColumn("50kHz Test", ImGuiTableColumnFlags_WidthFixed, 75.0f);
-                ImGui::TableSetupColumn("Value", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+                ImGui::TableSetupColumn("Latest Value", ImGuiTableColumnFlags_WidthFixed, 75.0f);
                 ImGui::TableHeadersRow();
                 ImPlot::PushColormap(ImPlotColormap_Cool);
                 
                 for (int i=0; i<NUM_POSICS; i++){ // get data for each posic
                     getSensorTimeseries(posic_timeseries, POSIC_PAST_DPTS, NUM_POSICS, BYTES_PER_POSIC, i, single_posic_timeseries);
-                    // combineBytesInArray(single_posic_timeseries_int, single_posic_timeseries_len, single_posic_timeseries);
+
+                    // printf("POSIC %d 16bit Timeseries: ", i);
+                    // for (int j=0; j<single_posic_timeseries_len; j++){
+                    //     printf("%.1f ", single_posic_timeseries[j]);
+                    // }
+                    // printf("\n");
+
                     rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en, POSIC_MAX_VAL);
                     dnd_posics[i].data.assign(single_posic_timeseries, single_posic_timeseries+single_posic_timeseries_len);
                     // assign() is iteration based, could make this faster
@@ -211,7 +207,7 @@ int main(){
 
             // TODO: CAN communication with dorsal based on test_mode_en status
 
-            // plot xela table
+            // plot tactile sensor table
             // for (int i=0; i<NUM_XELAS, i++){
             //     getSensorTimeseries(xela stuff);
 
@@ -221,7 +217,7 @@ int main(){
             //     }
             // }
 
-            // plot xela drag-n-drop
+            // plot tactile sensor drag-n-drop
 
             ImGui::End();
         }
@@ -263,44 +259,30 @@ static void glfw_error_callback(int error, const char* description){
     fprintf(stderr, "GLFW Error %d: %s\n", error, description);
 }
 
-// retrieves timeseries data from one sensor
-// TODO: each posic is 2 bytes of data --> need to put these two bytes into one number
-// that will be added to the float out[] array 
 void getSensorTimeseries(int timeseries_flattened[],
                             int dim1_elements,
-                            int dim2_elements, 
+                            int dim2_elements,
                             int dim3_elements,
-                            int dim2_idx,  
-                            uint8_t out[])
-{
-    int timeseries_idx;
-
-    for (int i=0; i<dim1_elements; i++){
-       timeseries_idx = i * (dim2_elements * dim3_elements) + dim2_idx * dim3_elements;
-
-        for (int j=0; j<dim3_elements; j++){
-            out[i * dim3_elements + j] = timeseries_flattened[timeseries_idx + j];
-        }
-    }
-}
-
-void getSensorTimeseries(int timeseries_flattened[],
-                            int dim1_elements,
-                            int dim2_elements, 
-                            int dim3_elements,
-                            int dim2_idx,  
+                            int dim2_idx,
                             float out[])
 {
     int timeseries_idx;
+    uint8_t timepoint_posic_bytes[2];
 
-    for (int i=0; i<dim1_elements; i++){
-       timeseries_idx = i * (dim2_elements * dim3_elements) + dim2_idx * dim3_elements;
+    for (int i = 0; i < dim1_elements; i++) {
+        timeseries_idx = i * (dim2_elements * dim3_elements) + dim2_idx * dim3_elements;
 
-        for (int j=0; j<dim3_elements; j++){
-            out[i * dim3_elements + j] = timeseries_flattened[timeseries_idx + j];
+        for (int j = 0; j < dim3_elements; j += 2) {
+            timepoint_posic_bytes[0] = timeseries_flattened[timeseries_idx + j];
+            timepoint_posic_bytes[1] = timeseries_flattened[timeseries_idx + j + 1];
+
+            // Perform byte concatenation and convert to float
+            uint16_t concatenated_bytes = (timepoint_posic_bytes[0] << 8) | timepoint_posic_bytes[1];
+            out[i] = static_cast<float>(concatenated_bytes);
         }
     }
 }
+
 
 // push items to queue and update the associated flattened array
 void updateTimeseries(uint8_t data[], 
@@ -316,12 +298,12 @@ void updateTimeseries(uint8_t data[],
         fixedPushBack(timeseries, timeseries_len, data[i]);
     }
     
-    // modify fn to take in a vector, then assign that vector to the timeseries deque, then 
+    // could modify fn to take in a vector, then assign that vector to the timeseries deque, then 
     // plot that vector directly
     if(count_dpts<timeseries_len){ 
         temp_vec = std::vector<int>(timeseries_len, 0);  // Init all values to zero
         temp_vec.assign(timeseries->begin(), timeseries->end());  // Copy elements from deque
-        count_dpts++;
+        count_dpts+=data_len;
     }
     else{
         temp_vec = std::vector<int>(timeseries->begin(), timeseries->end());
@@ -337,19 +319,6 @@ void updateTimeseries(uint8_t data[],
     // timeseries_flattened = &temp_vec[0];
     // printf("Address of timeseries_flattened after vector reassignment: %d\n", timeseries_flattened);
 
-}
-
-int combineBytesInArray(uint8_t in[], int len, float out[]){
-    
-    if (len % 2 != 0){
-        return 1; 
-    }
-
-    for (int i=0; i<len; i+=2){
-        out[i/2] = in[i] << 8 | in[i+1];
-    }
-
-    return 0;
 }
 
 // pushes an item to a queue of fixed length

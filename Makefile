@@ -9,6 +9,7 @@ OBJ = $(BIN)/obj
 
 EXE_DEMO = demo
 EXE_APP = app
+EXE_TEST = test
 
 # SOURCES = $(IMGUI_DIR)/imgui/imgui.cpp $(IMGUI_DIR)/imgui/imgui_demo.cpp $(IMGUI_DIR)/imgui/imgui_draw.cpp $(IMGUI_DIR)/imgui/imgui_tables.cpp $(IMGUI_DIR)/imgui/imgui_widgets.cpp
 # SOURCES += $(IMGUI_DIR)/backends/imgui_impl_glfw.cpp $(IMGUI_DIR)/backends/imgui_impl_opengl3.cpp
@@ -20,14 +21,18 @@ SOURCES = imgui.cpp imgui_demo.cpp imgui_draw.cpp imgui_tables.cpp imgui_widgets
 SOURCES += imgui_impl_glfw.cpp imgui_impl_opengl3.cpp
 SOURCES += implot_items.cpp implot.cpp implot_demo.cpp
 
-SOURCES_APP = app.cpp can.cpp display.cpp
+SOURCES_APP = app.cpp can.cpp display.cpp 
 SOURCES_APP += $(SOURCES)
 
 SOURCES_EX = main.cpp
 SOURCES_EX += $(SOURCES)
 
+SOURCES_TEST = test.cpp
+SOURCES_TEST += $(SOURCES)
+
 OBJS_EX = $(SOURCES_EX:%.cpp=$(OBJ)/%.o)
 OBJS_APP = $(SOURCES_APP:%.cpp=$(OBJ)/%.o)
+OBJS_TEST = $(SOURCES_TEST:%.cpp=$(OBJ)/%.o)
 
 # OBJS_EX = $(addsuffix .o, $(basename $(notdir $(SOURCES_EX))))
 # OBJS_APP = $(addsuffix .o, $(basename $(notdir $(SOURCES_APP))))
@@ -70,8 +75,8 @@ $(OBJ)/%.o:$(IMGUI_DIR)/implot/%.cpp
 
 .PHONY: app demo clean test
 
-test:
-	@echo $(OBJS_EX)
+test: $(BIN)/$(EXE_APP)
+	@echo Build complete for $(ECHO_MESSAGE)
 
 app: $(BIN)/$(EXE_APP)
 	@echo Build complete for $(ECHO_MESSAGE)
@@ -85,8 +90,11 @@ $(BIN)/$(EXE_APP): $(OBJS_APP)
 $(BIN)/$(EXE_DEMO): $(OBJS_EX)
 	$(CXX) -o $@ $^ $(CXXFLAGS) $(LIBS)
 
+$(BIN)/$(EXE_TEST): $(OBJS_TEST)
+	$(CXX) -o $@ $^ $(CXXFLAGS) $(LIBS)
+
 # clean_bin:
 # 	rm -f $(BIN)
 
 clean:
-	rm -f $(BIN)/$(EXE_APP) $(BIN)/$(EXE_DEMO) $(OBJS_APP) $(OBJS_EX)
+	rm -f $(BIN)/$(EXE_APP) $(BIN)/$(EXE_DEMO) $(OBJS_APP) $(OBJS_EX) $(OBJS_TEST)

@@ -16,7 +16,7 @@ def generate_random_list(length, min_value, max_value):
 
 
 while True:
-    msg = can.Message(arbitration_id=0x44, data=generate_random_list(6, 0, 200), is_extended_id=False)
+    msg = can.Message(arbitration_id=0x50, data=generate_random_list(6, 0, 200), is_extended_id=False)
     bus.send(msg)
     
-    time.sleep(0.1)
+    time.sleep(1)

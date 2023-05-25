@@ -13,9 +13,7 @@
 #include <linux/can.h>
 #include <linux/can/raw.h>
 
-const int rhcp::NUM_POSICS = 3;
-const int rhcp::NUM_XELAS = 3;
-const char* rhcp::CAN_INTERFACE_NAME = "vcan0";
+const char* rhcp::CAN_INTERFACE_NAME = "can0";
 
 int rhcp::canInitSocket(int *s){
     
