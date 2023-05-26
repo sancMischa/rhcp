@@ -18,7 +18,8 @@ namespace rhcp{
         Plt = 0; Yax = ImAxis_Y1; 
     }
 
-}
+};
+
 
 void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int dataseries_len, float ymax) {
 
@@ -61,6 +62,9 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
         reset_axes = true;
     }
 
+    static int history = dataseries_len;
+    ImGui::SliderInt("History",&history,1,dataseries_len,"%d most recent datapoints");
+
     if (reset_axes){
         ImPlot::SetNextAxesLimits(0, dataseries_len-1, 0, ymax, ImGuiCond_Always);
         reset_axes = false;
@@ -68,7 +72,10 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
 
     if (ImPlot::BeginPlot("##DND1", ImVec2(-1,195))) {
 
-        ImPlot::SetupAxesLimits(0, dataseries_len-1, 0, ymax); // ImGuiCond_Always prevents zooming (although the zoom action is still available)
+        // ImPlot::SetupAxesLimits(dataseries_len-history-1, dataseries_len-1, 0, ymax, ImGuiCond_Always); // ImGuiCond_Always prevents zooming (although the zoom action is still available)
+
+        ImPlot::SetupAxisLimits(ImAxis_X1, dataseries_len-history-1, dataseries_len-1, ImGuiCond_Always);
+        ImPlot::SetupAxisLimits(ImAxis_Y1, 0, ymax);
 
         ImPlot::SetupAxis(ImAxis_X1, nullptr, flags);
         ImPlot::SetupAxis(ImAxis_Y1, "[drop here]", flags);
@@ -82,9 +89,6 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
                 ImPlot::SetNextLineStyle(dnd_items[k].Color);
                 ImPlot::PlotLine(dnd_items[k].Label, &dnd_items[k].data[0], dataseries_len, 1, 0, 0, 0);
                 
-                ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 3, dnd_items[k].Color, 1, dnd_items[k].Color);
-                // ImPlot::PlotScatter("", &dnd_items[k].data[0], dataseries_len, 1);
-                
                 // allow legend item labels to be DND sources
                 if (ImPlot::BeginDragDropSourceItem(dnd_items[k].Label)) {
                     ImGui::SetDragDropPayload("MY_DND", &k, sizeof(int));
@@ -92,6 +96,11 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
                     ImGui::TextUnformatted(dnd_items[k].Label);
                     ImPlot::EndDragDropSource();
                 }
+            }
+
+            if (reset_axes){
+                ImPlot::SetNextAxesLimits(0, dataseries_len-1, 0, ymax, ImGuiCond_Always);
+                reset_axes = false;
             }
         }
         // allow the main plot area to be a DND target
@@ -139,7 +148,18 @@ void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, boo
     ImGui::PopID();
     ImGui::TableSetColumnIndex(2);
 
-    most_recent_val = timeseries[len_timeseries-1]; // for first couple datapoints, current value will always show zeros because we're taking last value of single posic timeseries
+    // not complete, because if the value is actually zero, it'll skip it to find a non-zero    
+    if(timeseries[len_timeseries-1] == 0){
+        for(int i=len_timeseries-1; i>0; i--){
+            if(timeseries[i]!=0){
+                most_recent_val = timeseries[i];
+                break;
+            }
+        }
+    }
+    else{
+        most_recent_val = timeseries[len_timeseries-1];
+    }
 
     ImGui::Text("%.0f", most_recent_val);
     ImGui::TableSetColumnIndex(3);

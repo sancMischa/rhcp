@@ -23,6 +23,18 @@ namespace rhcp {
         void Reset();
     };
 
+    // utility structure for realtime plot
+    // struct ScrollingBuffer {
+    //     int MaxSize;
+    //     int Offset;
+    //     ImVector<ImVec2> Data;
+        
+    //     ScrollingBuffer();
+    //     ScrollingBuffer(int max_size);
+    //     void AddPoint(float x, float y);
+    //     void Erase();
+    // };
+
     // Function prototypes
     void displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int dataseries_len, float ymax);
     ImVec4 RandomColor();

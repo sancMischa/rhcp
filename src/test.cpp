@@ -57,8 +57,7 @@ int main(){
     struct canfd_frame *read_frame = &frame;
 
     unsigned int POSIC_MSG_ID = 0x050; //
-    const int POSIC_PAST_DPTS = 500; // number of messages to graph
-    // TODO: once get past 500 dpts, latency to do with processing time becomes noticeable
+    const int POSIC_PAST_DPTS = 500; // number of messages to graph, max size of all time you can view
     const int NUM_POSICS = 17;
     const int BYTES_PER_POSIC = 2;
     int posic_timeseries_len = POSIC_PAST_DPTS * NUM_POSICS * BYTES_PER_POSIC;
@@ -82,8 +81,8 @@ int main(){
     bool test_mode_en[NUM_POSICS] = {0};
 
     rhcp::MyDndItem dnd_posics[NUM_POSICS];
-    int count_msgs = 0;
-    int prescaler = 100;
+    int count = 0;
+    int prescaler = 50; // CAN rx rate division (only read in every "prescaler" number of CAN messages)
     
     // set drag and drop labels
     for (int i=0; i<NUM_POSICS; i++){
@@ -119,8 +118,6 @@ int main(){
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
-    // bool ret = rhcp::displayLoadTextureFromFile(hand_img_path, &hand_img_texture, &hand_img_width, &hand_img_height);
-    // IM_ASSERT(ret); // interferes with debugging, include in production code
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -159,16 +156,16 @@ int main(){
 
             nbytes = rhcp::canReadFrame(s, read_frame);
 
-            // if(nbytes != -1){
-            //     count_msgs++;
-            // }
-
             if (nbytes != -1){ // recieved new data
-                // count_msgs = 0;
+                count++;
 
                 // handle posic frame
                 if (read_frame->can_id == POSIC_MSG_ID){
-                    updateTimeseries(read_frame->data, NUM_POSICS*BYTES_PER_POSIC, posic_timeseries_len, posic_timeseries, &posic_deque);
+                    // updateTimeseries() accounts for ~0.3s
+                    if (count >= prescaler){
+                        updateTimeseries(read_frame->data, NUM_POSICS*BYTES_PER_POSIC, posic_timeseries_len, posic_timeseries, &posic_deque);
+                        count = 0;
+                    }
                 }
                 else{ // should be an else if with id check like above (future proof))
                     // handle tactile sensor frame as above
@@ -186,9 +183,11 @@ int main(){
                 ImGui::TableHeadersRow();
                 ImPlot::PushColormap(ImPlotColormap_Cool);
                 
+
+                // loop accounts for ~0.2s
                 for (int i=0; i<NUM_POSICS; i++){ // get data for each posic
                     getSensorTimeseries(posic_timeseries, POSIC_PAST_DPTS, NUM_POSICS, BYTES_PER_POSIC, i, single_posic_timeseries);
-
+                    
                     // if (i==0){ // debugging first posic timeseries
                     //     printf("POSIC %d 16bit Timeseries: ", i);
                     //     for (int j=0; j<single_posic_timeseries_len; j++){
@@ -197,6 +196,7 @@ int main(){
                     //     printf("\n");
                     // }
 
+                    // displayTablePlot() accounts for ~1.9s
                     rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en, POSIC_MAX_VAL);
                     dnd_posics[i].data.assign(single_posic_timeseries, single_posic_timeseries+single_posic_timeseries_len);
                     // assign() is iteration based, could make this faster
