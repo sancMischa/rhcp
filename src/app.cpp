@@ -57,8 +57,8 @@ int main(){
     struct canfd_frame *read_frame = &frame;
 
     unsigned int POSIC_MSG_ID = 0x050; //
-    const int POSIC_PAST_DPTS = 5000; // number of messages to graph
-    const int NUM_POSICS = 3;
+    const int POSIC_PAST_DPTS = 300; // number of messages to graph
+    const int NUM_POSICS = 17;
     const int BYTES_PER_POSIC = 2;
     int posic_timeseries_len = POSIC_PAST_DPTS * NUM_POSICS * BYTES_PER_POSIC;
     int single_posic_timeseries_len = POSIC_PAST_DPTS;
@@ -81,6 +81,8 @@ int main(){
     bool test_mode_en[NUM_POSICS] = {0};
 
     rhcp::MyDndItem dnd_posics[NUM_POSICS];
+    int count_msgs = 0;
+    int prescaler = 100;
     
     // set drag and drop labels
     for (int i=0; i<NUM_POSICS; i++){
@@ -141,7 +143,7 @@ int main(){
         // CAN initialization
         can_connected = rhcp::canIsConnected();
         if(!can_connected){
-            ImGui::Text("No CAN device found, attempting connection.\n");
+            ImGui::Text("No correctly initialized FDCAN device found, attempting connection...\n");
             ImGui::End();
             can_sock_deinit = -1;
         }
@@ -153,16 +155,21 @@ int main(){
             }
 
             ImGui::End();      
-            // need to CONTINUALLY check if CAN disconnected (what we have here is a one-time check)
+
             nbytes = rhcp::canReadFrame(s, read_frame);
 
+            // if(nbytes != -1){
+            //     count_msgs++;
+            // }
+
             if (nbytes != -1){ // recieved new data
+                // count_msgs = 0;
 
                 // handle posic frame
                 if (read_frame->can_id == POSIC_MSG_ID){
-                    updateTimeseries(read_frame->data, read_frame->len, posic_timeseries_len, posic_timeseries, &posic_deque);
+                    updateTimeseries(read_frame->data, NUM_POSICS*BYTES_PER_POSIC, posic_timeseries_len, posic_timeseries, &posic_deque);
                 }
-                else{ // should be an else if (future proof))
+                else{ // should be an else if with id check like above (future proof))
                     // handle tactile sensor frame as above
                 }
             }
@@ -181,11 +188,13 @@ int main(){
                 for (int i=0; i<NUM_POSICS; i++){ // get data for each posic
                     getSensorTimeseries(posic_timeseries, POSIC_PAST_DPTS, NUM_POSICS, BYTES_PER_POSIC, i, single_posic_timeseries);
 
-                    // printf("POSIC %d 16bit Timeseries: ", i);
-                    // for (int j=0; j<single_posic_timeseries_len; j++){
-                    //     printf("%.1f ", single_posic_timeseries[j]);
+                    // if (i==0){ // debugging first posic timeseries
+                    //     printf("POSIC %d 16bit Timeseries: ", i);
+                    //     for (int j=0; j<single_posic_timeseries_len; j++){
+                    //         printf("%.0f ", single_posic_timeseries[j]);
+                    //     }
+                    //     printf("\n");
                     // }
-                    // printf("\n");
 
                     rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en, POSIC_MAX_VAL);
                     dnd_posics[i].data.assign(single_posic_timeseries, single_posic_timeseries+single_posic_timeseries_len);
@@ -261,21 +270,13 @@ void getSensorTimeseries(int timeseries_flattened[],
                             int dim2_idx,
                             float out[])
 {
-    int timeseries_idx;
-    uint8_t timepoint_posic_bytes[2];
-
     for (int i = 0; i < dim1_elements; i++) {
-        timeseries_idx = i * (dim2_elements * dim3_elements) + dim2_idx * dim3_elements;
-
-        for (int j = 0; j < dim3_elements; j += 2) {
-            timepoint_posic_bytes[0] = timeseries_flattened[timeseries_idx + j];
-            timepoint_posic_bytes[1] = timeseries_flattened[timeseries_idx + j + 1];
-
-            // Perform byte concatenation and convert to float
-            uint16_t concatenated_bytes = (timepoint_posic_bytes[0] << 8) | timepoint_posic_bytes[1];
-            out[i] = static_cast<float>(concatenated_bytes);
-        }
+        int byte1 = timeseries_flattened[i * dim2_elements * dim3_elements + dim2_idx * dim3_elements];
+        int byte2 = timeseries_flattened[i * dim2_elements * dim3_elements + dim2_idx * dim3_elements + 1];
+        int combinedBytes = (byte1 << 8) | byte2;
+        out[i] = (float)combinedBytes;
     }
+
 }
 
 
@@ -307,11 +308,16 @@ void updateTimeseries(uint8_t data[],
     int* temp_ptr = &temp_vec[0];
     std::copy(temp_ptr, temp_ptr + timeseries_len, timeseries_flattened); // linear time operation
 
+    // printf("Flattened Timeseries: \n");
+    // for (int i = 0; i < timeseries_len; i++)
+    //     printf("%02X ",timeseries_flattened[i]);
+    // printf("\r\n");
+
 }
 
 // pushes an item to a queue of fixed length
 void fixedPushBack(std::deque<int> *q, int max_len, int val){
-    if (q->size() == (unsigned long int)max_len){ // ensure this comparison still works
+    if (q->size() == (unsigned long int)max_len){
         q->pop_front();
     }
     q->push_back(val);

@@ -115,31 +115,6 @@ int rhcp::canCloseSocket(int *s){
     return 0;
 }
 
-// // returns 0 if can connected, 1 if can not connected, -1 if issue opening file
-// int rhcp::canIsConnected(){
-//     FILE *fp;
-//     char *fname = "/proc/net/dev";
-//     const char *search = rhcp::CAN_INTERFACE_NAME;
-//     char temp[512];
-
-//     // open file
-//     if((fp = fopen(fname, "r")) == NULL){
-//         return -1;
-//     }
-
-//     // read each line, search for string
-//     while (fgets(temp, sizeof(temp), fp) != NULL){
-//         if (strstr(temp, search) != NULL){
-//             fclose(fp);
-//             return 0;
-//         }
-//     }
-
-//     fclose(fp);
-    
-//     return 1;
-// }
-
 
 int rhcp::canIsConnected() {
     struct ifreq ifr;
