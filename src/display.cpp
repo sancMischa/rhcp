@@ -83,7 +83,7 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
                 ImPlot::PlotLine(dnd_items[k].Label, &dnd_items[k].data[0], dataseries_len, 1, 0, 0, 0);
                 
                 ImPlot::SetNextMarkerStyle(ImPlotMarker_Circle, 3, dnd_items[k].Color, 1, dnd_items[k].Color);
-                ImPlot::PlotScatter("", &dnd_items[k].data[0], dataseries_len, 1);
+                // ImPlot::PlotScatter("", &dnd_items[k].data[0], dataseries_len, 1);
                 
                 // allow legend item labels to be DND sources
                 if (ImPlot::BeginDragDropSourceItem(dnd_items[k].Label)) {
@@ -139,20 +139,18 @@ void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, boo
     ImGui::PopID();
     ImGui::TableSetColumnIndex(2);
 
-    //note that for first couple datapoints, will always show zeros because we're taking last value of single posic timeseries
-
-    most_recent_val = timeseries[len_timeseries-1];
+    most_recent_val = timeseries[len_timeseries-1]; // for first couple datapoints, current value will always show zeros because we're taking last value of single posic timeseries
 
     ImGui::Text("%.0f", most_recent_val);
     ImGui::TableSetColumnIndex(3);
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0)); // no graph padding
-    //TODO: make plots displayed in table larger
+    // TODO: make plots displayed in table larger
     if (ImPlot::BeginPlot("##0n",ImVec2(-1, 30),ImPlotFlags_CanvasOnly|ImPlotFlags_NoChild)) {
         ImPlot::SetupAxes(nullptr,nullptr,ImPlotAxisFlags_NoDecorations,ImPlotAxisFlags_NoDecorations);
         ImPlot::SetupAxesLimits(0, len_timeseries - 1, 0, ymax, ImGuiCond_Always);
         ImPlot::SetNextLineStyle(ImPlot::GetColormapColor(idx));
         ImPlot::PlotLine("", timeseries, len_timeseries, 1, 0, 0, 0);
-        ImPlot::PlotScatter("", timeseries, len_timeseries, 1);
+        // ImPlot::PlotScatter("", timeseries, len_timeseries, 1); slow
         ImPlot::EndPlot();
     }
 

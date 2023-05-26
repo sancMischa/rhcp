@@ -27,7 +27,8 @@ SOURCES_APP += $(SOURCES)
 SOURCES_EX = main.cpp
 SOURCES_EX += $(SOURCES)
 
-SOURCES_TEST = test.cpp can.cpp
+SOURCES_TEST = test.cpp can.cpp display.cpp
+SOURCES_TEST += $(SOURCES)
 
 OBJS_EX = $(SOURCES_EX:%.cpp=$(OBJ)/%.o)
 OBJS_APP = $(SOURCES_APP:%.cpp=$(OBJ)/%.o)

@@ -104,7 +104,7 @@ int main(){
     if (window == nullptr)
         return 1;
     glfwMakeContextCurrent(window);
-    glfwSwapInterval(1); // Enable vsync
+    glfwSwapInterval(0); // enabling vsync (1) is SLOW
 
     // Create window with graphics context
     ImGui::CreateContext();
