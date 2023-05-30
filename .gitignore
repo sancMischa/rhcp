@@ -1,6 +1,8 @@
 /misc
 .vscode
-/bin
+/bin/obj
+/bin/test
+/bin/demo
 /imgui.ini
 /src/main.cpp
 /tools/env
