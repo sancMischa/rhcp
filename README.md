@@ -28,7 +28,6 @@ Once the PCAN is plugged in, set up the device using the following command.
 ```
 sudo ip link set can0 up type can bitrate 1000000 dbitrate 2000000 fd on restart-ms 100
 ```
-> If you have not set up a CAN device, the GUI will prompt you to do so. If your PCAN is set up correctly (quickly blinking green LED), the GUI's visualizations for the hands' various sensors will appear.
 
 To start the GUI, run the `app` executable, located in the `bin` directory. 
 ```
@@ -41,7 +40,8 @@ Currently supported command line arguments are listed below.
     ```
     $ ./bin/app -d can1
     ```
-
+    
+> Note: If you have not set up a CAN device, the GUI will prompt you to do so. If your PCAN is set up correctly (quickly blinking green LED), the GUI's visualizations for the hands' various sensors will appear.
 
 
 
