@@ -45,6 +45,14 @@ void updateTimeseries(uint8_t data[],
 
 void fixedPushBack(std::deque<int> *q, int max_len, int val);
 std::string constructPath(const std::string& path, const std::string& imageName);
+void processArgs(int argc, char* argv[]);
+
+
+//---------------------------------------------------------------------
+// GLOBAL VARIABLES
+//---------------------------------------------------------------------
+
+const char* rhcp::can_interface_name = "can0";
 
 //---------------------------------------------------------------------
 // MAIN
@@ -75,7 +83,6 @@ int main(int argc, char* argv[]){
 
     int hand_img_width, hand_img_height = 0;
     GLuint hand_img_texture = 0;
-    // const char* hand_img_path = "./lib/img/hand_img_v3_1.png";
 
     std::string executable_path = argv[0];
     std::string image_name = "hand_img_v3_1.png";
@@ -92,10 +99,12 @@ int main(int argc, char* argv[]){
     int count = 0;
     int prescaler = 50; // CAN rx rate division (only read in every "prescaler" number of CAN messages)
     
+    // process command line arguments
+    processArgs(argc, argv);
+
     // set drag and drop labels
     for (int i=0; i<NUM_POSICS; i++){
         dnd_posics[i].Label = rhcp::posicLUT(i);
-        // printf("Label %d: %s\n", i, dnd_posics[i].Label);
     }
 
     // GLFW Initilization
@@ -141,8 +150,7 @@ int main(int argc, char* argv[]){
 
         // app code
         ImGui::Begin("Hand Picture Window");
-        ImGui::SeparatorText("RHCP Details");
-        ImGui::Text("Description of GUI here");
+        ImGui::Text("Welcome to the Robotic Hand Control Panel (RHCP)\n");
         
         // rendering hand image  
         window_size = ImGui::GetWindowSize(); 
@@ -152,7 +160,7 @@ int main(int argc, char* argv[]){
         // CAN initialization
         can_connected = rhcp::canIsConnected();
         if(!can_connected){
-            ImGui::Text("No correctly initialized FDCAN device found, attempting connection...\n");
+            ImGui::Text("Device '%s' not connected or correctly initialized, retrying connection to '%s'...\n", rhcp::can_interface_name, rhcp::can_interface_name);
             ImGui::End();
             can_sock_deinit = -1;
         }
@@ -163,6 +171,7 @@ int main(int argc, char* argv[]){
                     return 1; // didn't sucessfully initialize socket
             }
 
+            ImGui::Text("Connected on network interface '%s'\n", rhcp::can_interface_name);
             ImGui::End();      
 
             nbytes = rhcp::canReadFrame(s, read_frame);
@@ -352,5 +361,16 @@ std::string constructPath(const std::string& path, const std::string& imageName)
     }
     
     return imagePath;
+
+}
+
+void processArgs(int argc, char* argv[]){
+
+    if (argc > 1){
+        printf("argc = %d\n", argc);
+        if (strcmp(argv[1], "-d") == 0){
+            rhcp::can_interface_name = argv[2];
+        }
+    }
 
 }

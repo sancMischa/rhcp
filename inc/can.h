@@ -11,7 +11,7 @@ namespace rhcp {
     int canCloseSocket(int *s);
     int canIsConnected();
 
-    extern const char* CAN_INTERFACE_NAME;
+    extern const char* can_interface_name;
 
 } // namespace rhcp
 

@@ -16,8 +16,6 @@
 #include <linux/netlink.h>
 #include <linux/rtnetlink.h>
 
-const char* rhcp::CAN_INTERFACE_NAME = "can0";
-
 int rhcp::canInitSocket(int *s){
     
     struct ifreq ifr;
@@ -32,7 +30,7 @@ int rhcp::canInitSocket(int *s){
     }
 
     //retrieve interface index
-    strcpy(ifr.ifr_name, rhcp::CAN_INTERFACE_NAME);
+    strcpy(ifr.ifr_name, rhcp::can_interface_name);
     if (ioctl(*s, SIOCGIFINDEX, &ifr) == -1){
         // perror("ioctl");
         close(*s);
@@ -127,7 +125,7 @@ int rhcp::canIsConnected() {
     }
 
     // Set the device name
-    strncpy(ifr.ifr_name, rhcp::CAN_INTERFACE_NAME, IFNAMSIZ);
+    strncpy(ifr.ifr_name, rhcp::can_interface_name, IFNAMSIZ);
 
     // Get the device flags
     if (ioctl(sock_fd, SIOCGIFFLAGS, &ifr) == -1) {
