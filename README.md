@@ -21,13 +21,13 @@ sudo apt install libglfw3-dev
 
 ## Usage
 
-> The syntax of the examples below assume you are running ```app``` in the base project directory.
-
 Once the PCAN is plugged in, set up the device using the following command.
 
 ```
 sudo ip link set can0 up type can bitrate 1000000 dbitrate 2000000 fd on restart-ms 100
 ```
+
+> The syntax of the examples below assume you are running ```app``` in the base project directory.
 
 To start the GUI, run the `app` executable, located in the `bin` directory. 
 ```
