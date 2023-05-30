@@ -2,6 +2,7 @@
 #define DISPLAY_H_
 
 #include <stdint.h>
+#include <string>
 #include "imgui.h"
 #include "implot.h"
 #include <vector>
@@ -15,25 +16,13 @@ namespace rhcp {
         int Idx;
         int Plt;
         ImAxis Yax;
-        char Label[16];
+        const char* Label;
         std::vector<float> data; // length needs to be NUM_POSICS, but don't want to constrain to that
         ImVec4 Color;
 
         MyDndItem();
         void Reset();
     };
-
-    // utility structure for realtime plot
-    // struct ScrollingBuffer {
-    //     int MaxSize;
-    //     int Offset;
-    //     ImVector<ImVec2> Data;
-        
-    //     ScrollingBuffer();
-    //     ScrollingBuffer(int max_size);
-    //     void AddPoint(float x, float y);
-    //     void Erase();
-    // };
 
     // Function prototypes
     void displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int dataseries_len, float ymax);
@@ -43,7 +32,10 @@ namespace rhcp {
     inline T RandomRange(T min, T max);
     
     void displayTablePlot(int idx, float timeseries[], int len_timeseries, bool checkbox_status[], float ymax);
-    bool displayLoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height);
+    bool displayLoadTextureFromFile(std::string& filename, GLuint* out_texture, int* out_width, int* out_height);
+
+    const char* posicLUT(int index);
+
 
 } // namespace rhcp
 

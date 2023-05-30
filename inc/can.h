@@ -11,8 +11,6 @@ namespace rhcp {
     int canCloseSocket(int *s);
     int canIsConnected();
 
-    extern const int NUM_POSICS; // total number of posics per hand
-    extern const int NUM_XELAS; // total number of xelas per hand
     extern const char* CAN_INTERFACE_NAME;
 
 } // namespace rhcp

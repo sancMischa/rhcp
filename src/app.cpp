@@ -13,12 +13,12 @@
 #include <stdlib.h>
 #include <deque>
 #include <vector>
+#include <string>
+#include <unistd.h>
 
 #include <math.h>
 #include <time.h>
 #include <iostream>
-
-#include <sys/stat.h>
 
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
@@ -44,12 +44,13 @@ void updateTimeseries(uint8_t data[],
                         std::deque<int> *timeseries);
 
 void fixedPushBack(std::deque<int> *q, int max_len, int val);
+std::string constructPath(const std::string& path, const std::string& imageName);
 
 //---------------------------------------------------------------------
 // MAIN
 //---------------------------------------------------------------------
 
-int main(){
+int main(int argc, char* argv[]){
 
     int sock = 0;
     int *s = &sock; // can interface's socket
@@ -74,7 +75,14 @@ int main(){
 
     int hand_img_width, hand_img_height = 0;
     GLuint hand_img_texture = 0;
-    const char* hand_img_path = "./lib/img/hand_img.jpg";
+    // const char* hand_img_path = "./lib/img/hand_img_v3_1.png";
+
+    std::string executable_path = argv[0];
+    std::string image_name = "hand_img_v3_1.png";
+    std::string hand_img_path = constructPath(executable_path, image_name);
+
+    ImVec2 window_size;
+    float aspect_ratio = 1;
 
     static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
                 ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
@@ -86,7 +94,8 @@ int main(){
     
     // set drag and drop labels
     for (int i=0; i<NUM_POSICS; i++){
-        snprintf(dnd_posics[i].Label, sizeof(dnd_posics[i].Label), "POSIC %d", i+1); // set label
+        dnd_posics[i].Label = rhcp::posicLUT(i);
+        // printf("Label %d: %s\n", i, dnd_posics[i].Label);
     }
 
     // GLFW Initilization
@@ -135,8 +144,10 @@ int main(){
         ImGui::SeparatorText("RHCP Details");
         ImGui::Text("Description of GUI here");
         
-        // rendering hand image        
-        ImGui::Image((void*)(intptr_t)hand_img_texture, ImVec2(hand_img_width, hand_img_height));
+        // rendering hand image  
+        window_size = ImGui::GetWindowSize(); 
+        aspect_ratio = static_cast<float>(hand_img_width) / static_cast<float>(hand_img_height);     
+        ImGui::Image((void*)(intptr_t)hand_img_texture, ImVec2(window_size.x - 30, (window_size.x / aspect_ratio)));
 
         // CAN initialization
         can_connected = rhcp::canIsConnected();
@@ -322,4 +333,24 @@ void fixedPushBack(std::deque<int> *q, int max_len, int val){
         q->pop_front();
     }
     q->push_back(val);
+}
+
+std::string constructPath(const std::string& path, const std::string& imageName) {
+    std::string executablePath = path;
+    std::string executableDirectory = "";
+    std::string imagePath = "";
+
+    // Get the directory of the executable
+    size_t lastSlashPos = executablePath.find_last_of('/');
+    if (lastSlashPos != std::string::npos) {
+        executableDirectory = executablePath.substr(0, lastSlashPos);
+    }
+
+    // Construct the image path
+    if (!executableDirectory.empty()) {
+        imagePath = executableDirectory + "/../lib/img/" + imageName;
+    }
+    
+    return imagePath;
+
 }

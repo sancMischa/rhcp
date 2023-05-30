@@ -24,11 +24,19 @@ namespace rhcp{
 void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int dataseries_len, float ymax) {
 
     bool reset_axes = false;
+    float graphWidthPercent = 0.8f;
+    float graphHeightPercent = 0.6f;
+    float graphWidth = 0;
+    float graphHeight = 0;
 
-    ImGui::Begin("DragnDrop Window");
+    ImGui::Begin("POSIC DragnDrop Window");
+
+    ImVec2 windowSize = ImGui::GetWindowSize();
+    graphWidth = windowSize.x * graphWidthPercent;
+    graphHeight = windowSize.y * graphHeightPercent;
 
     // child window to serve as initial source for our DND items
-    ImGui::BeginChild("DND_LEFT",ImVec2(100,400));
+    ImGui::BeginChild("DND_LEFT",ImVec2(175,400));
     if (ImGui::Button("Clear Graph")) {
         for (int k = 0; k < num_dnd_items; ++k)
             dnd_items[k].Reset();
@@ -37,14 +45,16 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
         if (dnd_items[k].Plt > 0)
             continue;
         ImPlot::ItemIcon(dnd_items[k].Color); ImGui::SameLine();
-        ImGui::Selectable(dnd_items[k].Label, false, 0, ImVec2(100, 0));
+        ImGui::Selectable(dnd_items[k].Label, false, 0, ImVec2(150, 0)); // needed to change this size to allow all text to show up in box
+
         if (ImGui::BeginDragDropSource(ImGuiDragDropFlags_None)) {
             ImGui::SetDragDropPayload("MY_DND", &k, sizeof(int));
             ImPlot::ItemIcon(dnd_items[k].Color); ImGui::SameLine();
-            ImGui::TextUnformatted(dnd_items[k].Label);
+            ImGui::TextUnformatted(dnd_items[k].Label); // TODO: this isn't displaying fully
             ImGui::EndDragDropSource();
         }
     }
+
     ImGui::EndChild(); // dnd source window
 
     // dnd accepting window (graphs)
@@ -55,6 +65,7 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
         ImGui::EndDragDropTarget();
     }
     ImGui::SameLine();
+
     ImGui::BeginChild("DND_RIGHT",ImVec2(-1,400));
     ImPlotAxisFlags flags = ImPlotAxisFlags_NoTickLabels | ImPlotAxisFlags_NoGridLines | ImPlotAxisFlags_NoHighlight;
 
@@ -70,7 +81,7 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
         reset_axes = false;
     }
 
-    if (ImPlot::BeginPlot("##DND1", ImVec2(-1,195))) {
+    if (ImPlot::BeginPlot("##DND1", ImVec2(graphWidth,graphHeight))) {
 
         // ImPlot::SetupAxesLimits(dataseries_len-history-1, dataseries_len-1, 0, ymax, ImGuiCond_Always); // ImGuiCond_Always prevents zooming (although the zoom action is still available)
 
@@ -138,10 +149,12 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
 void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, bool checkbox_status[], float ymax){
 
     float most_recent_val = 0;
+    const char* text = rhcp::posicLUT(idx); 
 
     ImGui::TableNextRow();
     ImGui::TableSetColumnIndex(0);
-    ImGui::Text("POSIC %d", idx+1);
+    
+    ImGui::Text("%s", text);
     ImGui::TableSetColumnIndex(1);
     ImGui::PushID(idx); // https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-about-the-id-stack-system
     ImGui::Checkbox("##0m", &checkbox_status[idx]); // Label = "", ID = hash of ("Window name", i, "#00n") - unique
@@ -164,8 +177,7 @@ void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, boo
     ImGui::Text("%.0f", most_recent_val);
     ImGui::TableSetColumnIndex(3);
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0)); // no graph padding
-    // TODO: make plots displayed in table larger
-    if (ImPlot::BeginPlot("##0n",ImVec2(-1, 30),ImPlotFlags_CanvasOnly|ImPlotFlags_NoChild)) {
+    if (ImPlot::BeginPlot("##0n",ImVec2(-1, 40),ImPlotFlags_CanvasOnly|ImPlotFlags_NoChild)) {
         ImPlot::SetupAxes(nullptr,nullptr,ImPlotAxisFlags_NoDecorations,ImPlotAxisFlags_NoDecorations);
         ImPlot::SetupAxesLimits(0, len_timeseries - 1, 0, ymax, ImGuiCond_Always);
         ImPlot::SetNextLineStyle(ImPlot::GetColormapColor(idx));
@@ -176,12 +188,15 @@ void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, boo
 
 }
 
-bool rhcp::displayLoadTextureFromFile(const char* filename, GLuint* out_texture, int* out_width, int* out_height){
+bool rhcp::displayLoadTextureFromFile(std::string& filename, GLuint* out_texture, int* out_width, int* out_height){
     
     // Load from file
     int image_width = 0;
     int image_height = 0;
-    unsigned char* image_data = stbi_load(filename, &image_width, &image_height, NULL, 4);
+
+    const char* filename_p = filename.c_str();
+
+    unsigned char* image_data = stbi_load(filename_p, &image_width, &image_height, NULL, 4);
     if (image_data == NULL)
         return false;
 
@@ -225,5 +240,30 @@ ImVec4 rhcp::RandomColor() {
     col.z = RandomRange(0.0f,1.0f);
     col.w = 1.0f;
     return col;
+}
+
+
+const char* rhcp::posicLUT(int index){
+    static const char* lut[] = {
+        "D2 MCP Flexion", 
+        "D2 PIP Flexion", 
+        "D3 MCP Flexion", 
+        "D3 PIP Flexion",
+        "D4 MCP Flexion",
+        "D4 PIP Flexion",
+        "D5 MCP Flexion",
+        "D5 PIP Flexion",
+        "D1 PIP Flexion",
+        "D1 MCP Flexion",
+        "D1 DIP Flexion",
+        "D2 MCP Abduction",
+        "D3 MCP Abduction", 
+        "D4 MCP Abduction", 
+        "D5 MCP Abduction",
+        "D1 CMC Opposition", 
+        "D1 CMC Abduction"
+    };
+
+    return lut[index];
 }
 

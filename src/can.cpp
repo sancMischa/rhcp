@@ -72,17 +72,17 @@ int rhcp::canReadFrame(int *s, canfd_frame *frame){
 
     nbytes = read(*s, frame, sizeof(struct canfd_frame));
 
-    // debugging purposes    
-    if(nbytes == -1){
-        // printf("No data to read, would block.\n");
-    }
-    else{
-        printf("0x%03X [%d] ",frame->can_id, frame->len); // can_dlc instead of len for std can frames
+    // // debugging purposes    
+    // if(nbytes == -1){
+    //     // printf("No data to read, would block.\n");
+    // }
+    // else{
+    //     printf("0x%03X [%d] ",frame->can_id, frame->len); // can_dlc instead of len for std can frames
 
-        for (int i = 0; i < frame->len; i++)
-            printf("%02X ",frame->data[i]);
-        printf("\r\n");
-    }
+    //     for (int i = 0; i < frame->len; i++)
+    //         printf("%02X ",frame->data[i]);
+    //     printf("\r\n");
+    // }
     
     return nbytes;
 
