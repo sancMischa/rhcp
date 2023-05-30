@@ -11,19 +11,26 @@ Clone this repository to any location on your computer.
 
 If you have not already done so, follow the instructions for installing the [PCAN Linux drivers](https://www.peak-system.com/fileadmin/media/linux/index.htm). 
 
+> If you have not set up a CAN device, the GUI will prompt you to do so. If your PCAN is set up correctly (quickly blinking green LED), the GUI's visualizations for the hands' various sensors will appear.
+
 ## Usage
 
-To start the GUI, run the ```app``` executable, located in the ```bin``` directory. 
+> The syntax of the examples below assume you are running ```app``` in the base project directory.
 
+
+To start the GUI, run the `app` executable, located in the `bin` directory. 
 ```
-.
-├── bin
-│   ├── app
-├── inc
-├── lib
-├── src
+    $./bin/app
 ```
-If you have not set up a CAN device, the GUI will prompt you to do so. If your PCAN is set up correctly (quickly blinking green LED), the GUI's visualizations for the hands' various sensors will appear.
+
+Currently supported command line arguments are listed below.  
+
+* To specify an FDCAN interface, use `-d <interface name>`. Default is `can0`
+    ```
+    $ ./bin/app -d can1
+    ```
+
+
 
 
 
