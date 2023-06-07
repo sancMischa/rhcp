@@ -20,6 +20,34 @@ namespace rhcp{
 
 };
 
+float getMostRecentVal(float timeseries[], int len_timeseries){
+
+    // TODO: fix this implementation so it properly takes most recent value
+    // have some static int count, take most_recent_val = timeseries[count], if count == len_timeseries -1, then go to the else
+    // put in helper function
+    float most_recent_val = 0;
+
+    if(timeseries[len_timeseries-1] == 0){
+        for(int i=len_timeseries-1; i>0; i--){
+            if(timeseries[i]!=0){
+                most_recent_val = timeseries[i];
+                break;
+            }
+        }
+    }
+    else{
+        most_recent_val = timeseries[len_timeseries-1];
+    }
+
+    return most_recent_val;
+}
+
+float getTotalDistance(float most_recent_val){
+    static float distance = 0;
+    distance += most_recent_val;
+    return distance;
+}
+
 
 void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int dataseries_len, float ymax) {
 
@@ -146,43 +174,41 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
 }
 
 // to be called in loop, doesn't include begin table or end table
-void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, bool checkbox_status[], float ymax){
+void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, bool checkbox_status[], float posic_distances[], float ymax){
 
-    float most_recent_val = 0;
-    const char* text = rhcp::posicLUT(idx); 
+    const char* text = rhcp::posicLUT(idx);
+    float most_recent_val = getMostRecentVal(timeseries, len_timeseries);
+    static int count = 0;
 
     ImGui::TableNextRow();
-    ImGui::TableSetColumnIndex(0);
     
+    ImGui::TableSetColumnIndex(0);
     ImGui::Text("%s", text);
+    
     ImGui::TableSetColumnIndex(1);
     ImGui::PushID(idx); // https://github.com/ocornut/imgui/blob/master/docs/FAQ.md#q-about-the-id-stack-system
-    ImGui::Checkbox("##0m", &checkbox_status[idx]); // Label = "", ID = hash of ("Window name", i, "#00n") - unique
+    ImGui::Checkbox("##0m", &checkbox_status[idx]); // Label = "", ID = hash of ("Window name", i, "#00m") - unique
     ImGui::PopID();
+    
     ImGui::TableSetColumnIndex(2);
-
-    // not complete, because if the value is actually zero, it'll skip it to find a non-zero    
-    if(timeseries[len_timeseries-1] == 0){
-        for(int i=len_timeseries-1; i>0; i--){
-            if(timeseries[i]!=0){
-                most_recent_val = timeseries[i];
-                break;
-            }
-        }
-    }
-    else{
-        most_recent_val = timeseries[len_timeseries-1];
-    }
-
     ImGui::Text("%.0f", most_recent_val);
+
     ImGui::TableSetColumnIndex(3);
+    count++;
+    if (count%100 == 0){ // make 100 smaller if want this to update faster
+        count = 0;    
+        posic_distances[idx] = getTotalDistance(most_recent_val);
+    }
+    ImGui::Text("%.0f", posic_distances[idx]);
+
+    ImGui::TableSetColumnIndex(4);
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0)); // no graph padding
     if (ImPlot::BeginPlot("##0n",ImVec2(-1, 40),ImPlotFlags_CanvasOnly|ImPlotFlags_NoChild)) {
         ImPlot::SetupAxes(nullptr,nullptr,ImPlotAxisFlags_NoDecorations,ImPlotAxisFlags_NoDecorations);
         ImPlot::SetupAxesLimits(0, len_timeseries - 1, 0, ymax, ImGuiCond_Always);
         ImPlot::SetNextLineStyle(ImPlot::GetColormapColor(idx));
         ImPlot::PlotLine("", timeseries, len_timeseries, 1, 0, 0, 0);
-        // ImPlot::PlotScatter("", timeseries, len_timeseries, 1); slow
+        // ImPlot::PlotScatter("", timeseries, len_timeseries, 1); takes a few seconds, too slow
         ImPlot::EndPlot();
     }
 
@@ -266,4 +292,3 @@ const char* rhcp::posicLUT(int index){
 
     return lut[index];
 }
-

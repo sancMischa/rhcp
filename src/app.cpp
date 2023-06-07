@@ -19,6 +19,10 @@
 #include <math.h>
 #include <time.h>
 #include <iostream>
+#include <chrono>
+#include <iomanip>
+#include <cstdio>
+#include <sstream>
 
 #define GL_SILENCE_DEPRECATION
 #include <GLFW/glfw3.h> // Will drag system OpenGL headers
@@ -46,6 +50,8 @@ void updateTimeseries(uint8_t data[],
 void fixedPushBack(std::deque<int> *q, int max_len, int val);
 std::string constructPath(const std::string& path, const std::string& imageName);
 void processArgs(int argc, char* argv[]);
+void resetUptime(std::chrono::steady_clock::time_point& startTime);
+std::string getUptime(const std::chrono::steady_clock::time_point& startTime);
 
 
 //---------------------------------------------------------------------
@@ -80,6 +86,9 @@ int main(int argc, char* argv[]){
     int can_connected = 0; // can not connected
     int nbytes = -1; // no new data read from can interface
     int can_sock_deinit = 1; // socket deinitialized
+    
+    std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
+
 
     int hand_img_width, hand_img_height = 0;
     GLuint hand_img_texture = 0;
@@ -94,6 +103,7 @@ int main(int argc, char* argv[]){
     static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
                 ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
     bool test_mode_en[NUM_POSICS] = {0};
+    float posic_distances[NUM_POSICS] = {0};
 
     rhcp::MyDndItem dnd_posics[NUM_POSICS];
     int count = 0;
@@ -151,27 +161,32 @@ int main(int argc, char* argv[]){
         // app code
         ImGui::Begin("Hand Picture Window");
         ImGui::Text("Welcome to the Robotic Hand Control Panel (RHCP)\n");
-        
-        // rendering hand image  
-        window_size = ImGui::GetWindowSize(); 
-        aspect_ratio = static_cast<float>(hand_img_width) / static_cast<float>(hand_img_height);     
-        ImGui::Image((void*)(intptr_t)hand_img_texture, ImVec2(window_size.x - 30, (window_size.x / aspect_ratio)));
 
         // CAN initialization
         can_connected = rhcp::canIsConnected();
         if(!can_connected){
             ImGui::Text("Device '%s' not connected or correctly initialized, retrying connection to '%s'...\n", rhcp::can_interface_name, rhcp::can_interface_name);
             ImGui::End();
-            can_sock_deinit = -1;
+            can_sock_deinit = 1;
         }
         else{
             if(can_sock_deinit){
                 can_sock_deinit = rhcp::canInitSocket(s);
                 if(can_sock_deinit)
                     return 1; // didn't sucessfully initialize socket
+                else{
+                    resetUptime(startTime);
+                }
             }
 
             ImGui::Text("Connected on network interface '%s'\n", rhcp::can_interface_name);
+            ImGui::Text("Uptime: %s\n", getUptime(startTime).c_str());
+
+            // rendering hand image  
+            window_size = ImGui::GetWindowSize(); 
+            aspect_ratio = static_cast<float>(hand_img_width) / static_cast<float>(hand_img_height);     
+            ImGui::Image((void*)(intptr_t)hand_img_texture, ImVec2(window_size.x - 30, (window_size.x / aspect_ratio)));
+
             ImGui::End();      
 
             nbytes = rhcp::canReadFrame(s, read_frame);
@@ -196,10 +211,11 @@ int main(int argc, char* argv[]){
             ImGui::SeparatorText("Sensor Graphs");
 
             // plot posic table
-            if (ImGui::BeginTable("##table", 4, flags, ImVec2(-1,0))){
+            if (ImGui::BeginTable("##table", 5, flags, ImVec2(-1,0))){
                 ImGui::TableSetupColumn("Sensor", ImGuiTableColumnFlags_WidthFixed, 75.0f);
                 ImGui::TableSetupColumn("50kHz Test", ImGuiTableColumnFlags_WidthFixed, 75.0f);
                 ImGui::TableSetupColumn("Latest Value", ImGuiTableColumnFlags_WidthFixed, 75.0f);
+                ImGui::TableSetupColumn("Total Distance", ImGuiTableColumnFlags_WidthFixed, 75.0f);
                 ImGui::TableHeadersRow();
                 ImPlot::PushColormap(ImPlotColormap_Cool);
                 
@@ -216,8 +232,7 @@ int main(int argc, char* argv[]){
                     //     printf("\n");
                     // }
 
-                    // displayTablePlot() accounts for ~1.9s
-                    rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en, POSIC_MAX_VAL);
+                    rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en, posic_distances, POSIC_MAX_VAL);
                     dnd_posics[i].data.assign(single_posic_timeseries, single_posic_timeseries+single_posic_timeseries_len);
                     // assign() is iteration based, could make this faster
 
@@ -374,3 +389,25 @@ void processArgs(int argc, char* argv[]){
     }
 
 }
+
+void resetUptime(std::chrono::steady_clock::time_point& startTime) {
+    startTime = std::chrono::steady_clock::now();
+}
+
+std::string getUptime(const std::chrono::steady_clock::time_point& startTime) {
+    std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    std::chrono::steady_clock::duration duration = now - startTime;
+    long long totalSeconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
+
+    int hours = totalSeconds / 3600;
+    int minutes = (totalSeconds % 3600) / 60;
+    int seconds = totalSeconds % 60;
+
+    std::ostringstream oss;
+    oss << std::setfill('0') << std::setw(2) << hours << ":"
+        << std::setfill('0') << std::setw(2) << minutes << ":"
+        << std::setfill('0') << std::setw(2) << seconds;
+
+    return oss.str();
+}
+
