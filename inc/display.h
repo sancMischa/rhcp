@@ -31,8 +31,9 @@ namespace rhcp {
     template <typename T>
     inline T RandomRange(T min, T max);
     
-    void displayTablePlot(int idx, float timeseries[], int len_timeseries, bool checkbox_status[], float posic_distances[], float ymax);
+    void displayPosicTablePlot(int idx, float timeseries[], int len_timeseries, bool checkbox_status[], float distances[], float current_val, float ymax);
     bool displayLoadTextureFromFile(std::string& filename, GLuint* out_texture, int* out_width, int* out_height);
+    void displayUpdatePosicParams(float posic_distances[], float posic_last_vals[], float current_val, int idx);
 
     const char* posicLUT(int index);
 

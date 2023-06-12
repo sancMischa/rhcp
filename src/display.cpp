@@ -20,34 +20,15 @@ namespace rhcp{
 
 };
 
-float getMostRecentVal(float timeseries[], int len_timeseries){
+void rhcp::displayUpdatePosicParams(float posic_distances[], float posic_last_vals[], float current_val, int idx){
 
-    // TODO: fix this implementation so it properly takes most recent value
-    // have some static int count, take most_recent_val = timeseries[count], if count == len_timeseries -1, then go to the else
-    // put in helper function
-    float most_recent_val = 0;
+    float last_val = posic_last_vals[idx];
 
-    if(timeseries[len_timeseries-1] == 0){
-        for(int i=len_timeseries-1; i>0; i--){
-            if(timeseries[i]!=0){
-                most_recent_val = timeseries[i];
-                break;
-            }
-        }
+    if (current_val != last_val){
+        posic_distances[idx] += abs(current_val - last_val);
+        posic_last_vals[idx] = current_val;
     }
-    else{
-        most_recent_val = timeseries[len_timeseries-1];
-    }
-
-    return most_recent_val;
 }
-
-float getTotalDistance(float most_recent_val){
-    static float distance = 0;
-    distance += most_recent_val;
-    return distance;
-}
-
 
 void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int dataseries_len, float ymax) {
 
@@ -174,11 +155,9 @@ void rhcp::displayDragAndDrop(MyDndItem dnd_items[], int num_dnd_items, int data
 }
 
 // to be called in loop, doesn't include begin table or end table
-void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, bool checkbox_status[], float posic_distances[], float ymax){
+void rhcp::displayPosicTablePlot(int idx, float timeseries[], int len_timeseries, bool checkbox_status[], float distances[], float current_val, float ymax){
 
     const char* text = rhcp::posicLUT(idx);
-    float most_recent_val = getMostRecentVal(timeseries, len_timeseries);
-    static int count = 0;
 
     ImGui::TableNextRow();
     
@@ -191,15 +170,10 @@ void rhcp::displayTablePlot(int idx, float timeseries[], int len_timeseries, boo
     ImGui::PopID();
     
     ImGui::TableSetColumnIndex(2);
-    ImGui::Text("%.0f", most_recent_val);
+    ImGui::Text("%.0f", current_val);
 
     ImGui::TableSetColumnIndex(3);
-    count++;
-    if (count%100 == 0){ // make 100 smaller if want this to update faster
-        count = 0;    
-        posic_distances[idx] = getTotalDistance(most_recent_val);
-    }
-    ImGui::Text("%.0f", posic_distances[idx]);
+    ImGui::Text("%.0f", distances[idx]);
 
     ImGui::TableSetColumnIndex(4);
     ImPlot::PushStyleVar(ImPlotStyleVar_PlotPadding, ImVec2(0,0)); // no graph padding

@@ -53,7 +53,6 @@ void processArgs(int argc, char* argv[]);
 void resetUptime(std::chrono::steady_clock::time_point& startTime);
 std::string getUptime(const std::chrono::steady_clock::time_point& startTime);
 
-
 //---------------------------------------------------------------------
 // GLOBAL VARIABLES
 //---------------------------------------------------------------------
@@ -89,7 +88,6 @@ int main(int argc, char* argv[]){
     
     std::chrono::steady_clock::time_point startTime = std::chrono::steady_clock::now();
 
-
     int hand_img_width, hand_img_height = 0;
     GLuint hand_img_texture = 0;
 
@@ -103,7 +101,11 @@ int main(int argc, char* argv[]){
     static ImGuiTableFlags flags = ImGuiTableFlags_BordersOuter | ImGuiTableFlags_BordersV |
                 ImGuiTableFlags_RowBg | ImGuiTableFlags_Resizable | ImGuiTableFlags_Reorderable;
     bool test_mode_en[NUM_POSICS] = {0};
+    
     float posic_distances[NUM_POSICS] = {0};
+    float posic_last_vals[NUM_POSICS] = {0};
+    float posic_current_val = 0;
+    int posic_dpts_idx = -1;
 
     rhcp::MyDndItem dnd_posics[NUM_POSICS];
     int count = 0;
@@ -199,6 +201,12 @@ int main(int argc, char* argv[]){
                     // updateTimeseries() accounts for ~0.3s
                     if (count >= prescaler){
                         updateTimeseries(read_frame->data, NUM_POSICS*BYTES_PER_POSIC, posic_timeseries_len, posic_timeseries, &posic_deque);
+                        
+                        if(posic_dpts_idx != single_posic_timeseries_len-1){
+                            posic_dpts_idx++;
+                        }
+                        
+                        
                         count = 0;
                     }
                 }
@@ -218,10 +226,9 @@ int main(int argc, char* argv[]){
                 ImGui::TableSetupColumn("Total Distance", ImGuiTableColumnFlags_WidthFixed, 75.0f);
                 ImGui::TableHeadersRow();
                 ImPlot::PushColormap(ImPlotColormap_Cool);
-                
 
-                // loop accounts for ~0.2s
                 for (int i=0; i<NUM_POSICS; i++){ // get data for each posic
+
                     getSensorTimeseries(posic_timeseries, POSIC_PAST_DPTS, NUM_POSICS, BYTES_PER_POSIC, i, single_posic_timeseries);
                     
                     // if (i==0){ // debugging first posic timeseries
@@ -232,7 +239,17 @@ int main(int argc, char* argv[]){
                     //     printf("\n");
                     // }
 
-                    rhcp::displayTablePlot(i, single_posic_timeseries, single_posic_timeseries_len, test_mode_en, posic_distances, POSIC_MAX_VAL);
+                    posic_current_val = single_posic_timeseries[posic_dpts_idx];
+                    rhcp::displayUpdatePosicParams(posic_distances, posic_last_vals, posic_current_val, i);
+                    
+
+                    rhcp::displayPosicTablePlot(i, 
+                                            single_posic_timeseries, 
+                                            single_posic_timeseries_len, 
+                                            test_mode_en,
+                                            posic_distances,
+                                            posic_current_val,
+                                            POSIC_MAX_VAL);
                     dnd_posics[i].data.assign(single_posic_timeseries, single_posic_timeseries+single_posic_timeseries_len);
                     // assign() is iteration based, could make this faster
 
@@ -241,6 +258,7 @@ int main(int argc, char* argv[]){
                 ImPlot::PopColormap();
                 ImGui::EndTable();
             }
+            // count num
 
             // plot posic drag-n-drop
             rhcp::displayDragAndDrop(dnd_posics, NUM_POSICS, single_posic_timeseries_len, POSIC_MAX_VAL);
@@ -410,4 +428,3 @@ std::string getUptime(const std::chrono::steady_clock::time_point& startTime) {
 
     return oss.str();
 }
-
